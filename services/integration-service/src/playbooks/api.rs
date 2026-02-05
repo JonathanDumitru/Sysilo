@@ -530,24 +530,111 @@ pub async fn approve_run(
         });
     }
 
-    // Update status to running (resume execution)
+    // Load playbook to get step definitions
+    let playbook = state
+        .storage
+        .get_playbook(&tenant_id, row.playbook_id)
+        .await
+        .map_err(|e| ApiError {
+            error: "not_found".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let steps: Vec<crate::playbooks::Step> = serde_json::from_value(playbook.steps.clone())
+        .map_err(|e| ApiError {
+            error: "parse_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // Parse step states to find the approval step that's currently running
+    let mut step_states: Vec<crate::playbooks::StepState> =
+        serde_json::from_value(row.step_states.clone()).map_err(|e| ApiError {
+            error: "parse_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // Find the running approval step and its next steps
+    let mut next_step_ids: Vec<String> = Vec::new();
+    for step_state in &mut step_states {
+        if step_state.status == crate::playbooks::StepStatus::Running {
+            if let Some(step_def) = steps.iter().find(|s| s.id == step_state.step_id) {
+                if matches!(step_def.step_type, crate::playbooks::StepType::Approval) {
+                    // Mark approval step as completed
+                    step_state.status = crate::playbooks::StepStatus::Completed;
+                    step_state.completed_at = Some(chrono::Utc::now());
+                    step_state.output = Some(serde_json::json!({
+                        "approved": true,
+                        "reason": req.reason,
+                    }));
+                    // Get next steps
+                    next_step_ids = step_def.on_success.clone();
+                    break;
+                }
+            }
+        }
+    }
+
+    // Mark next steps as running
+    for next_id in &next_step_ids {
+        if let Some(ns) = step_states.iter_mut().find(|s| s.step_id == *next_id) {
+            ns.status = crate::playbooks::StepStatus::Running;
+            ns.started_at = Some(chrono::Utc::now());
+        }
+    }
+
+    let step_states_json =
+        serde_json::to_value(&step_states).map_err(|e| ApiError {
+            error: "serialize_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // Update run status
+    let new_status = if next_step_ids.is_empty() { "completed" } else { "running" };
     state
         .storage
-        .update_playbook_run(id, "running", row.step_states.clone())
+        .update_playbook_run(id, new_status, step_states_json)
         .await
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
         })?;
 
+    // Dispatch next steps if Kafka producer available
+    if !next_step_ids.is_empty() {
+        if let Some(producer) = state.engine.kafka_producer() {
+            for next_id in &next_step_ids {
+                if let Some(next_step) = steps.iter().find(|s| s.id == *next_id) {
+                    if let Err(e) = crate::playbooks::executor::PlaybookExecutor::dispatch_step(
+                        producer,
+                        id,
+                        row.playbook_id,
+                        &tenant_id,
+                        next_step,
+                        &row.variables,
+                    )
+                    .await
+                    {
+                        tracing::error!(
+                            run_id = %id,
+                            step_id = %next_id,
+                            error = %e,
+                            "Failed to dispatch step after approval"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     tracing::info!(
         run_id = %id,
         tenant_id = %tenant_id,
         reason = ?req.reason,
-        "Playbook run approved"
+        next_steps = ?next_step_ids,
+        "Playbook run approved and resumed"
     );
 
-    // Re-fetch the updated run to return
+    // Re-fetch the updated run
     let updated_row = state
         .storage
         .get_playbook_run(&tenant_id, id)

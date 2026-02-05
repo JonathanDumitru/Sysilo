@@ -64,7 +64,7 @@ pub enum RunStatus {
 }
 
 /// Status of a single step within a run
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum StepStatus {
     #[default]
