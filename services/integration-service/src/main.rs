@@ -146,6 +146,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/playbook-runs/:id/reject", post(playbooks_api::reject_run))
         // Discovery endpoints
         .route("/discovery/run", post(api::run_discovery))
+        .route("/discovery/runs", get(api::list_discovery_runs))
         // Development/mock endpoints (for local testing without Kafka)
         .route("/dev/mock-discovery", post(api::mock_discovery_result))
         // Connection endpoints
