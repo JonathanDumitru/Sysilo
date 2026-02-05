@@ -14,6 +14,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod api;
 mod config;
+mod consumer;
 mod engine;
 mod kafka;
 mod middleware;
