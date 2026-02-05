@@ -662,6 +662,129 @@ impl Storage {
 
         Ok(())
     }
+
+    // =============================================================================
+    // Discovery Run operations
+    // =============================================================================
+
+    /// Create a new discovery run
+    pub async fn create_discovery_run(
+        &self,
+        tenant_id: &str,
+        connection_id: Uuid,
+        connection_name: &str,
+    ) -> Result<DiscoveryRunRow, StorageError> {
+        let row: DiscoveryRunRow = sqlx::query_as(
+            r#"
+            INSERT INTO discovery_runs (tenant_id, connection_id, connection_name, status)
+            VALUES ($1::uuid, $2, $3, 'pending')
+            RETURNING id, tenant_id, connection_id, connection_name, status,
+                      assets_found, error_message, started_at, completed_at, created_at
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(connection_id)
+        .bind(connection_name)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Get discovery runs by IDs (for polling)
+    pub async fn get_discovery_runs(
+        &self,
+        tenant_id: &str,
+        run_ids: &[Uuid],
+    ) -> Result<Vec<DiscoveryRunRow>, StorageError> {
+        let rows: Vec<DiscoveryRunRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, connection_id, connection_name, status,
+                   assets_found, error_message, started_at, completed_at, created_at
+            FROM discovery_runs
+            WHERE tenant_id = $1::uuid AND id = ANY($2)
+            ORDER BY started_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(run_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// List recent discovery runs for a tenant
+    pub async fn list_discovery_runs(
+        &self,
+        tenant_id: &str,
+        limit: i64,
+    ) -> Result<Vec<DiscoveryRunRow>, StorageError> {
+        let rows: Vec<DiscoveryRunRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, connection_id, connection_name, status,
+                   assets_found, error_message, started_at, completed_at, created_at
+            FROM discovery_runs
+            WHERE tenant_id = $1::uuid
+            ORDER BY started_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Update discovery run status on completion/failure
+    pub async fn update_discovery_run(
+        &self,
+        run_id: Uuid,
+        status: &str,
+        assets_found: i32,
+        error_message: Option<&str>,
+    ) -> Result<(), StorageError> {
+        sqlx::query(
+            r#"
+            UPDATE discovery_runs
+            SET status = $2,
+                assets_found = $3,
+                error_message = $4,
+                completed_at = CASE
+                    WHEN $2 IN ('completed', 'failed') THEN NOW()
+                    ELSE completed_at
+                END
+            WHERE id = $1
+            "#,
+        )
+        .bind(run_id)
+        .bind(status)
+        .bind(assets_found)
+        .bind(error_message)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update discovery run status to scanning
+    pub async fn mark_discovery_scanning(
+        &self,
+        run_id: Uuid,
+    ) -> Result<(), StorageError> {
+        sqlx::query(
+            r#"
+            UPDATE discovery_runs SET status = 'scanning' WHERE id = $1
+            "#,
+        )
+        .bind(run_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
 
 /// Database row for integrations
@@ -739,4 +862,19 @@ pub struct ConnectionRow {
     pub last_test_error: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Database row for discovery runs
+#[derive(Debug, FromRow)]
+pub struct DiscoveryRunRow {
+    pub id: Uuid,
+    pub tenant_id: Uuid,
+    pub connection_id: Uuid,
+    pub connection_name: String,
+    pub status: String,
+    pub assets_found: i32,
+    pub error_message: Option<String>,
+    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
