@@ -100,6 +100,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/runs/:id/cancel", post(api::cancel_run))
         // Discovery endpoints
         .route("/discovery/run", post(api::run_discovery))
+        // Development/mock endpoints (for local testing without Kafka)
+        .route("/dev/mock-discovery", post(api::mock_discovery_result))
         // Tenant context middleware (uses optional for dev - change to strict in production)
         .layer(axum_middleware::from_fn(
             middleware::optional_tenant_context_middleware,

@@ -398,3 +398,191 @@ pub async fn run_discovery(
         }),
     ))
 }
+
+// =============================================================================
+// Development/Mock endpoints (only for local testing)
+// =============================================================================
+
+/// Request to simulate discovery results (dev only)
+#[derive(Debug, Deserialize)]
+pub struct MockDiscoveryRequest {
+    /// Connection ID that was "discovered"
+    pub connection_id: Uuid,
+    /// Number of mock assets to generate (default: 5)
+    #[serde(default = "default_asset_count")]
+    pub asset_count: usize,
+}
+
+fn default_asset_count() -> usize {
+    5
+}
+
+/// Response from mock discovery
+#[derive(Debug, Serialize)]
+pub struct MockDiscoveryResponse {
+    pub message: String,
+    pub assets_created: usize,
+}
+
+/// Generate mock discovery results and send them to asset-service
+/// This bypasses Kafka entirely for local development testing
+pub async fn mock_discovery_result(
+    State(state): State<Arc<AppState>>,
+    Extension(tenant): Extension<TenantContext>,
+    Json(req): Json<MockDiscoveryRequest>,
+) -> Result<Json<MockDiscoveryResponse>, ApiError> {
+    let tenant_id = tenant.tenant_id.to_string();
+
+    // Generate mock discovered assets based on connection type
+    let mock_assets = generate_mock_assets(req.connection_id, req.asset_count);
+
+    // Send each asset to the asset-service
+    let client = reqwest::Client::new();
+    let asset_service_url = state
+        .config
+        .consumer
+        .asset_service_url
+        .clone();
+
+    let mut created_count = 0;
+
+    for asset in &mock_assets {
+        let create_request = serde_json::json!({
+            "name": asset.name,
+            "asset_type": asset.asset_type,
+            "description": asset.description,
+            "vendor": asset.vendor,
+            "version": asset.version,
+            "status": "active",
+            "metadata": asset.metadata,
+            "tags": asset.tags,
+        });
+
+        match client
+            .post(format!("{}/api/v1/assets", asset_service_url))
+            .header("X-Tenant-ID", &tenant_id)
+            .header("Content-Type", "application/json")
+            .json(&create_request)
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => {
+                created_count += 1;
+                tracing::info!(
+                    asset_name = %asset.name,
+                    asset_type = %asset.asset_type,
+                    "Mock asset created"
+                );
+            }
+            Ok(response) => {
+                tracing::warn!(
+                    asset_name = %asset.name,
+                    status = %response.status(),
+                    "Failed to create mock asset"
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    asset_name = %asset.name,
+                    error = %e,
+                    "Error creating mock asset"
+                );
+            }
+        }
+    }
+
+    Ok(Json(MockDiscoveryResponse {
+        message: format!(
+            "Mock discovery complete for connection {}",
+            req.connection_id
+        ),
+        assets_created: created_count,
+    }))
+}
+
+/// Mock asset for generation
+struct MockAsset {
+    name: String,
+    asset_type: String,
+    description: Option<String>,
+    vendor: Option<String>,
+    version: Option<String>,
+    metadata: serde_json::Value,
+    tags: Vec<String>,
+}
+
+/// Generate realistic mock assets based on connection type
+fn generate_mock_assets(connection_id: Uuid, count: usize) -> Vec<MockAsset> {
+    // Use connection_id to deterministically generate different asset sets
+    let seed = connection_id.as_u128() as usize;
+
+    let database_assets = vec![
+        ("users", "Stores user accounts and profiles"),
+        ("orders", "Customer order transactions"),
+        ("products", "Product catalog and inventory"),
+        ("sessions", "Active user sessions"),
+        ("audit_logs", "System audit trail"),
+        ("payments", "Payment transactions"),
+        ("notifications", "User notifications queue"),
+        ("analytics_events", "User behavior events"),
+    ];
+
+    let api_assets = vec![
+        ("User API", "RESTful API for user management"),
+        ("Orders API", "Order processing endpoints"),
+        ("Auth Service", "Authentication and authorization"),
+        ("Notification Service", "Push and email notifications"),
+        ("Search API", "Full-text search endpoints"),
+        ("Analytics API", "Reporting and dashboards"),
+    ];
+
+    let vendors = vec!["PostgreSQL", "MySQL", "Snowflake", "Salesforce", "AWS", "Azure"];
+    let versions = vec!["15.4", "8.0", "2024.1", "v2", "3.11", "14.2"];
+
+    let mut assets = Vec::new();
+
+    for i in 0..count {
+        let idx = (seed + i) % 8;
+        let is_database = (seed + i) % 3 != 0;
+
+        if is_database {
+            let (name, desc) = &database_assets[idx % database_assets.len()];
+            assets.push(MockAsset {
+                name: format!("{}_{}", name, (seed + i) % 100),
+                asset_type: "database".to_string(),
+                description: Some(desc.to_string()),
+                vendor: Some(vendors[idx % vendors.len()].to_string()),
+                version: Some(versions[idx % versions.len()].to_string()),
+                metadata: serde_json::json!({
+                    "discovered_at": chrono::Utc::now().to_rfc3339(),
+                    "connection_id": connection_id.to_string(),
+                    "row_count_estimate": (idx + 1) * 10000,
+                }),
+                tags: vec![
+                    "discovered".to_string(),
+                    if idx % 2 == 0 { "production" } else { "staging" }.to_string(),
+                ],
+            });
+        } else {
+            let (name, desc) = &api_assets[idx % api_assets.len()];
+            assets.push(MockAsset {
+                name: name.to_string(),
+                asset_type: "api".to_string(),
+                description: Some(desc.to_string()),
+                vendor: Some(vendors[(idx + 2) % vendors.len()].to_string()),
+                version: Some(format!("v{}.{}", idx % 3 + 1, idx % 10)),
+                metadata: serde_json::json!({
+                    "discovered_at": chrono::Utc::now().to_rfc3339(),
+                    "connection_id": connection_id.to_string(),
+                    "endpoint_count": (idx + 1) * 5,
+                }),
+                tags: vec![
+                    "discovered".to_string(),
+                    "api".to_string(),
+                ],
+            });
+        }
+    }
+
+    assets
+}

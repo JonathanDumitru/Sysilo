@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { X, Search, Database, Server, Globe, Loader2, CheckCircle } from 'lucide-react';
-import { useConnections, useRunDiscovery } from '../hooks/useDiscovery.js';
+import { X, Search, Database, Server, Globe, Loader2, CheckCircle, FlaskConical } from 'lucide-react';
+import { useConnections, useRunDiscovery, useMockDiscovery } from '../hooks/useDiscovery.js';
 
 interface DiscoveryModalProps {
   isOpen: boolean;
@@ -15,10 +15,18 @@ const connectorIcons: Record<string, React.ElementType> = {
   default: Server,
 };
 
+// Enable mock mode for local development (no Kafka required)
+const USE_MOCK_DISCOVERY = true;
+
 export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
   const [selectedConnections, setSelectedConnections] = useState<string[]>([]);
+  const [assetsCreated, setAssetsCreated] = useState(0);
   const { data: connections, isLoading: loadingConnections } = useConnections();
-  const { mutate: runDiscovery, isPending, isSuccess } = useRunDiscovery();
+  const { mutate: runDiscovery, isPending: isRealPending, isSuccess: isRealSuccess } = useRunDiscovery();
+  const { mutate: mockDiscovery, isPending: isMockPending, isSuccess: isMockSuccess } = useMockDiscovery();
+
+  const isPending = USE_MOCK_DISCOVERY ? isMockPending : isRealPending;
+  const isSuccess = USE_MOCK_DISCOVERY ? isMockSuccess : isRealSuccess;
 
   if (!isOpen) return null;
 
@@ -29,9 +37,26 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
   };
 
   const handleStartDiscovery = () => {
-    selectedConnections.forEach((connectionId) => {
-      runDiscovery({ connection_id: connectionId });
-    });
+    if (USE_MOCK_DISCOVERY) {
+      // Use mock discovery for local testing
+      let totalCreated = 0;
+      selectedConnections.forEach((connectionId) => {
+        mockDiscovery(
+          { connection_id: connectionId, asset_count: 5 },
+          {
+            onSuccess: (data) => {
+              totalCreated += data.assets_created;
+              setAssetsCreated(totalCreated);
+            },
+          }
+        );
+      });
+    } else {
+      // Use real discovery (requires Kafka)
+      selectedConnections.forEach((connectionId) => {
+        runDiscovery({ connection_id: connectionId });
+      });
+    }
   };
 
   const handleClose = () => {
@@ -74,10 +99,20 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
           ) : isSuccess ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="w-12 h-12 text-green-500 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900">Discovery Started</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                {USE_MOCK_DISCOVERY ? 'Mock Discovery Complete' : 'Discovery Started'}
+              </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Assets will appear in the registry as they're discovered
+                {USE_MOCK_DISCOVERY
+                  ? `${assetsCreated} mock assets created - refresh to see them`
+                  : 'Assets will appear in the registry as they\'re discovered'}
               </p>
+              {USE_MOCK_DISCOVERY && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full">
+                  <FlaskConical className="w-3 h-3" />
+                  Dev mode - using mock data
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
