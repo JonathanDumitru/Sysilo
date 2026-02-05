@@ -8,10 +8,12 @@ import {
   type Asset,
 } from '../services/assets.js';
 
-export function useAssets(params: ListAssetsParams = {}) {
+export function useAssets(params: ListAssetsParams = {}, enablePolling = false) {
   return useQuery({
     queryKey: ['assets', params],
     queryFn: () => listAssets(params),
+    staleTime: 10_000, // 10 seconds
+    refetchInterval: enablePolling ? 5_000 : false, // Poll every 5s when enabled
   });
 }
 

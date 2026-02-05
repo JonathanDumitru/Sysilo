@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Search, Filter, Network, Server, Database, Workflow, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, Network, Server, Database, Workflow, Loader2, AlertCircle, Radar } from 'lucide-react';
 
 import { useAssets, useAssetSearch, type Asset } from '../hooks/useAssets.js';
 import type { AssetType } from '../services/assets.js';
+import { DiscoveryModal } from '../components/DiscoveryModal.js';
 
 export function AssetRegistryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<AssetType | undefined>();
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
 
   const assetsQuery = useAssets({
     asset_type: typeFilter,
@@ -87,6 +89,13 @@ export function AssetRegistryPage() {
         <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
           <Network className="w-4 h-4" />
           Graph View
+        </button>
+        <button
+          onClick={() => setIsDiscoveryOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
+        >
+          <Radar className="w-4 h-4" />
+          Discover Assets
         </button>
       </div>
 
@@ -177,6 +186,9 @@ export function AssetRegistryPage() {
           Showing {assets.length} {isSearching ? 'results' : `of ${assetsQuery.data?.total ?? 0} assets`}
         </div>
       )}
+
+      {/* Discovery Modal */}
+      <DiscoveryModal isOpen={isDiscoveryOpen} onClose={() => setIsDiscoveryOpen(false)} />
     </div>
   );
 }
