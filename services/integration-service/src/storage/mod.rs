@@ -209,6 +209,251 @@ impl Storage {
 
         Ok(())
     }
+
+    // =============================================================================
+    // Playbook CRUD operations
+    // =============================================================================
+
+    /// List playbooks for a tenant
+    pub async fn list_playbooks(
+        &self,
+        tenant_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlaybookRow>, StorageError> {
+        let rows: Vec<PlaybookRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, name, description, trigger_type,
+                   steps, variables, created_at, updated_at
+            FROM playbooks
+            WHERE tenant_id = $1::uuid
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Get a single playbook
+    pub async fn get_playbook(
+        &self,
+        tenant_id: &str,
+        playbook_id: Uuid,
+    ) -> Result<PlaybookRow, StorageError> {
+        let row: Option<PlaybookRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, name, description, trigger_type,
+                   steps, variables, created_at, updated_at
+            FROM playbooks
+            WHERE tenant_id = $1::uuid AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(playbook_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| StorageError::NotFound(format!("Playbook {}", playbook_id)))
+    }
+
+    /// Create a new playbook
+    pub async fn create_playbook(
+        &self,
+        tenant_id: &str,
+        name: &str,
+        description: Option<&str>,
+        trigger_type: &str,
+        steps: serde_json::Value,
+        variables: serde_json::Value,
+    ) -> Result<PlaybookRow, StorageError> {
+        let row: PlaybookRow = sqlx::query_as(
+            r#"
+            INSERT INTO playbooks (tenant_id, name, description, trigger_type, steps, variables)
+            VALUES ($1::uuid, $2, $3, $4, $5, $6)
+            RETURNING id, tenant_id, name, description, trigger_type,
+                      steps, variables, created_at, updated_at
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(name)
+        .bind(description)
+        .bind(trigger_type)
+        .bind(steps)
+        .bind(variables)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Update a playbook
+    pub async fn update_playbook(
+        &self,
+        tenant_id: &str,
+        playbook_id: Uuid,
+        name: &str,
+        description: Option<&str>,
+        trigger_type: &str,
+        steps: serde_json::Value,
+        variables: serde_json::Value,
+    ) -> Result<PlaybookRow, StorageError> {
+        let row: PlaybookRow = sqlx::query_as(
+            r#"
+            UPDATE playbooks
+            SET name = $3, description = $4, trigger_type = $5,
+                steps = $6, variables = $7, updated_at = NOW()
+            WHERE tenant_id = $1::uuid AND id = $2
+            RETURNING id, tenant_id, name, description, trigger_type,
+                      steps, variables, created_at, updated_at
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(playbook_id)
+        .bind(name)
+        .bind(description)
+        .bind(trigger_type)
+        .bind(steps)
+        .bind(variables)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Delete a playbook
+    pub async fn delete_playbook(
+        &self,
+        tenant_id: &str,
+        playbook_id: Uuid,
+    ) -> Result<(), StorageError> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM playbooks
+            WHERE tenant_id = $1::uuid AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(playbook_id)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(StorageError::NotFound(format!("Playbook {}", playbook_id)));
+        }
+
+        Ok(())
+    }
+
+    // =============================================================================
+    // Playbook Run operations
+    // =============================================================================
+
+    /// Create a new playbook run
+    pub async fn create_playbook_run(
+        &self,
+        tenant_id: &str,
+        playbook_id: Uuid,
+        variables: serde_json::Value,
+        step_states: serde_json::Value,
+    ) -> Result<PlaybookRunRow, StorageError> {
+        let row: PlaybookRunRow = sqlx::query_as(
+            r#"
+            INSERT INTO playbook_runs (tenant_id, playbook_id, variables, step_states, status)
+            VALUES ($1::uuid, $2, $3, $4, 'pending')
+            RETURNING id, playbook_id, tenant_id, status, variables,
+                      step_states, started_at, completed_at
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(playbook_id)
+        .bind(variables)
+        .bind(step_states)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Get a playbook run by ID
+    pub async fn get_playbook_run(
+        &self,
+        tenant_id: &str,
+        run_id: Uuid,
+    ) -> Result<PlaybookRunRow, StorageError> {
+        let row: Option<PlaybookRunRow> = sqlx::query_as(
+            r#"
+            SELECT id, playbook_id, tenant_id, status, variables,
+                   step_states, started_at, completed_at
+            FROM playbook_runs
+            WHERE tenant_id = $1::uuid AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(run_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| StorageError::NotFound(format!("PlaybookRun {}", run_id)))
+    }
+
+    /// List runs for a playbook
+    pub async fn list_playbook_runs(
+        &self,
+        tenant_id: &str,
+        playbook_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<PlaybookRunRow>, StorageError> {
+        let rows: Vec<PlaybookRunRow> = sqlx::query_as(
+            r#"
+            SELECT id, playbook_id, tenant_id, status, variables,
+                   step_states, started_at, completed_at
+            FROM playbook_runs
+            WHERE tenant_id = $1::uuid AND playbook_id = $2
+            ORDER BY started_at DESC
+            LIMIT $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(playbook_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Update playbook run status and step states
+    pub async fn update_playbook_run(
+        &self,
+        run_id: Uuid,
+        status: &str,
+        step_states: serde_json::Value,
+    ) -> Result<(), StorageError> {
+        sqlx::query(
+            r#"
+            UPDATE playbook_runs
+            SET status = $2, step_states = $3,
+                completed_at = CASE
+                    WHEN $2 IN ('completed', 'failed', 'cancelled') THEN NOW()
+                    ELSE completed_at
+                END
+            WHERE id = $1
+            "#,
+        )
+        .bind(run_id)
+        .bind(status)
+        .bind(step_states)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
 
 /// Database row for integrations
@@ -241,4 +486,31 @@ pub struct RunRow {
     pub error_message: Option<String>,
     pub metrics: serde_json::Value,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Database row for playbooks
+#[derive(Debug, FromRow)]
+pub struct PlaybookRow {
+    pub id: Uuid,
+    pub tenant_id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub trigger_type: String,
+    pub steps: serde_json::Value,
+    pub variables: serde_json::Value,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Database row for playbook runs
+#[derive(Debug, FromRow)]
+pub struct PlaybookRunRow {
+    pub id: Uuid,
+    pub playbook_id: Uuid,
+    pub tenant_id: Uuid,
+    pub status: String,
+    pub variables: serde_json::Value,
+    pub step_states: serde_json::Value,
+    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
