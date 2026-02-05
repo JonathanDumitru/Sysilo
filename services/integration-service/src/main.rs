@@ -98,6 +98,8 @@ async fn main() -> anyhow::Result<()> {
         // Run endpoints
         .route("/runs/:id", get(api::get_run))
         .route("/runs/:id/cancel", post(api::cancel_run))
+        // Discovery endpoints
+        .route("/discovery/run", post(api::run_discovery))
         // Tenant context middleware (uses optional for dev - change to strict in production)
         .layer(axum_middleware::from_fn(
             middleware::optional_tenant_context_middleware,

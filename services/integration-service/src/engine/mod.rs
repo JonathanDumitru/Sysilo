@@ -515,4 +515,9 @@ impl Engine {
             info!(run_id = %id, "Cleaned up completed run from memory");
         }
     }
+
+    /// Get reference to Kafka producer (if available)
+    pub fn kafka_producer(&self) -> Option<&TaskProducer> {
+        self.kafka_producer.as_ref()
+    }
 }

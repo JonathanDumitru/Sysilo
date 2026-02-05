@@ -306,3 +306,95 @@ pub async fn cancel_run(
         metrics: serde_json::to_value(&run.metrics).unwrap_or_default(),
     }))
 }
+
+// Discovery endpoints
+
+/// Request to start a discovery run
+#[derive(Debug, Deserialize)]
+pub struct DiscoveryRequest {
+    /// Connection to discover against
+    pub connection_id: Uuid,
+    /// Type of discovery (full or incremental)
+    #[serde(default)]
+    pub discovery_type: DiscoveryType,
+    /// Optional resource type filters
+    #[serde(default)]
+    pub resource_types: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DiscoveryType {
+    #[default]
+    Full,
+    Incremental,
+}
+
+/// Response from starting discovery
+#[derive(Debug, Serialize)]
+pub struct DiscoveryResponse {
+    pub run_id: Uuid,
+    pub task_id: Uuid,
+    pub status: String,
+    pub message: String,
+}
+
+/// Start a discovery run against a connection
+pub async fn run_discovery(
+    State(state): State<Arc<AppState>>,
+    Extension(tenant): Extension<TenantContext>,
+    Json(req): Json<DiscoveryRequest>,
+) -> Result<(StatusCode, Json<DiscoveryResponse>), ApiError> {
+    let tenant_id = tenant.tenant_id.to_string();
+    let run_id = Uuid::new_v4();
+    let task_id = Uuid::new_v4();
+
+    // Create a discovery task
+    let task = crate::engine::Task {
+        id: task_id,
+        run_id,
+        integration_id: Uuid::nil(), // No integration - direct discovery
+        tenant_id: tenant_id.clone(),
+        task_type: "discovery".to_string(),
+        config: serde_json::json!({
+            "connection_id": req.connection_id,
+            "discovery_type": format!("{:?}", req.discovery_type).to_lowercase(),
+            "resource_types": req.resource_types,
+        }),
+        priority: 2,
+        timeout_seconds: 300, // 5 minute timeout for discovery
+        sequence: 0,
+        depends_on: vec![],
+    };
+
+    // Send to Kafka if producer available
+    if let Some(producer) = state.engine.kafka_producer() {
+        producer.send_task(&task).await.map_err(|e| ApiError {
+            error: "dispatch_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+        tracing::info!(
+            run_id = %run_id,
+            task_id = %task_id,
+            connection_id = %req.connection_id,
+            "Discovery task dispatched"
+        );
+    } else {
+        tracing::warn!(
+            run_id = %run_id,
+            task_id = %task_id,
+            "No Kafka producer - discovery task logged only"
+        );
+    }
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(DiscoveryResponse {
+            run_id,
+            task_id,
+            status: "pending".to_string(),
+            message: "Discovery task dispatched to agent".to_string(),
+        }),
+    ))
+}
