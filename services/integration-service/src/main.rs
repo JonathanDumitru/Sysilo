@@ -18,6 +18,7 @@ mod consumer;
 mod engine;
 mod kafka;
 mod middleware;
+mod playbooks;
 mod storage;
 
 use crate::config::Config;
