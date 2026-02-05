@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   X,
   Search,
@@ -48,7 +48,7 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
 
   const { data: connections, isLoading: loadingConnections } = useConnections();
   const { mutateAsync: runDiscovery } = useRunDiscovery();
-  const { mutate: mockDiscovery, isPending: isMockPending, isSuccess: isMockSuccess } = useMockDiscovery();
+  const { mutate: mockDiscovery } = useMockDiscovery();
   const { data: discoveryRuns } = useDiscoveryRuns(activeRunIds);
 
   if (!isOpen) return null;

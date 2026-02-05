@@ -116,8 +116,8 @@ impl ResultConsumer {
                 let asset_count = discovered.len() as i32;
 
                 // Create assets in the registry
-                for asset in &discovered {
-                    self.create_asset(&result.tenant_id, asset.clone()).await?;
+                for asset in discovered {
+                    self.create_asset(&result.tenant_id, asset).await?;
                 }
 
                 // TODO: Update discovery run status via run_id passed through Kafka headers.
