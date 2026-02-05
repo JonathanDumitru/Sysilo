@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use axum::{
     middleware as axum_middleware,
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use tokio::signal;
@@ -23,6 +23,7 @@ mod storage;
 
 use crate::config::Config;
 use crate::engine::Engine;
+use crate::playbooks::api as playbooks_api;
 use crate::storage::Storage;
 
 /// Application state shared across handlers
@@ -96,9 +97,21 @@ async fn main() -> anyhow::Result<()> {
         .route("/integrations", post(api::create_integration))
         .route("/integrations/:id", get(api::get_integration))
         .route("/integrations/:id/run", post(api::run_integration))
-        // Run endpoints
+        // Integration run endpoints
         .route("/runs/:id", get(api::get_run))
         .route("/runs/:id/cancel", post(api::cancel_run))
+        // Playbook endpoints
+        .route("/playbooks", get(playbooks_api::list_playbooks))
+        .route("/playbooks", post(playbooks_api::create_playbook))
+        .route("/playbooks/:id", get(playbooks_api::get_playbook))
+        .route("/playbooks/:id", put(playbooks_api::update_playbook))
+        .route("/playbooks/:id", delete(playbooks_api::delete_playbook))
+        .route("/playbooks/:id/run", post(playbooks_api::run_playbook))
+        .route("/playbooks/:id/runs", get(playbooks_api::list_playbook_runs))
+        // Playbook run endpoints
+        .route("/playbook-runs/:id", get(playbooks_api::get_playbook_run))
+        .route("/playbook-runs/:id/approve", post(playbooks_api::approve_run))
+        .route("/playbook-runs/:id/reject", post(playbooks_api::reject_run))
         // Discovery endpoints
         .route("/discovery/run", post(api::run_discovery))
         // Development/mock endpoints (for local testing without Kafka)
