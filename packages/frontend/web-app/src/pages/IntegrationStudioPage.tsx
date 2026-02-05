@@ -9,9 +9,10 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Connection,
-  Node,
-  Edge,
+  type Connection,
+  type Node,
+  type Edge,
+  type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -22,7 +23,7 @@ import { NodeToolbox } from '@/components/studio/NodeToolbox';
 import { NodeConfigPanel } from '@/components/studio/panels/NodeConfigPanel';
 import { StudioHeader } from '@/components/studio/StudioHeader';
 
-const nodeTypes = {
+const nodeTypes: NodeTypes = {
   source: SourceNode,
   transform: TransformNode,
   target: TargetNode,

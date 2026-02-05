@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Database, Cloud, FileText, Send } from 'lucide-react';
 
 const connectorIcons: Record<string, React.ElementType> = {
@@ -11,14 +11,15 @@ const connectorIcons: Record<string, React.ElementType> = {
   s3: FileText,
 };
 
-interface TargetNodeData {
+interface TargetNodeData extends Record<string, unknown> {
   label: string;
   connector: string;
   config: Record<string, unknown>;
 }
 
-export const TargetNode = memo(({ data, selected }: NodeProps<TargetNodeData>) => {
-  const Icon = connectorIcons[data.connector] || Database;
+export const TargetNode = memo(function TargetNode({ data, selected }: NodeProps) {
+  const nodeData = data as TargetNodeData;
+  const Icon = connectorIcons[nodeData.connector] || Database;
 
   return (
     <div
@@ -45,11 +46,9 @@ export const TargetNode = memo(({ data, selected }: NodeProps<TargetNodeData>) =
 
       {/* Content */}
       <div className="px-3 py-3">
-        <p className="text-sm font-medium text-gray-900">{data.label}</p>
-        <p className="text-xs text-gray-500 mt-1">{data.connector}</p>
+        <p className="text-sm font-medium text-gray-900">{nodeData.label}</p>
+        <p className="text-xs text-gray-500 mt-1">{nodeData.connector}</p>
       </div>
     </div>
   );
 });
-
-TargetNode.displayName = 'TargetNode';

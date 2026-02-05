@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
   Target,
   DollarSign,
   Layers,

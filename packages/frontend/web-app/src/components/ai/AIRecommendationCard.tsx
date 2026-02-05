@@ -81,9 +81,8 @@ export function AIRecommendationCard({
   compact = false,
 }: AIRecommendationCardProps) {
   const config = typeConfig[type];
-  const TypeIcon = config.icon;
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',

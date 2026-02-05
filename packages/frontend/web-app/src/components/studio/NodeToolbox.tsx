@@ -1,4 +1,4 @@
-import { Database, Shuffle, Target, Filter, Calculator, GitMerge, Cloud, FileText } from 'lucide-react';
+import { Database, Shuffle, Filter, Calculator, GitMerge, Cloud, FileText } from 'lucide-react';
 
 interface NodeTypeItem {
   type: string;

@@ -8,9 +8,6 @@ import {
   Edit,
   Copy,
   Play,
-  CheckCircle,
-  Clock,
-  AlertCircle,
 } from 'lucide-react';
 
 // Mock data

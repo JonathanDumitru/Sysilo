@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Shuffle, Filter, Calculator, GitMerge } from 'lucide-react';
 
 const transformIcons: Record<string, React.ElementType> = {
@@ -9,14 +9,15 @@ const transformIcons: Record<string, React.ElementType> = {
   join: GitMerge,
 };
 
-interface TransformNodeData {
+interface TransformNodeData extends Record<string, unknown> {
   label: string;
   transformType: string;
   config: Record<string, unknown>;
 }
 
-export const TransformNode = memo(({ data, selected }: NodeProps<TransformNodeData>) => {
-  const Icon = transformIcons[data.transformType] || Shuffle;
+export const TransformNode = memo(function TransformNode({ data, selected }: NodeProps) {
+  const nodeData = data as TransformNodeData;
+  const Icon = transformIcons[nodeData.transformType] || Shuffle;
 
   return (
     <div
@@ -43,8 +44,8 @@ export const TransformNode = memo(({ data, selected }: NodeProps<TransformNodeDa
 
       {/* Content */}
       <div className="px-3 py-3">
-        <p className="text-sm font-medium text-gray-900">{data.label}</p>
-        <p className="text-xs text-gray-500 mt-1">{data.transformType}</p>
+        <p className="text-sm font-medium text-gray-900">{nodeData.label}</p>
+        <p className="text-xs text-gray-500 mt-1">{nodeData.transformType}</p>
       </div>
 
       {/* Output handle */}
@@ -56,5 +57,3 @@ export const TransformNode = memo(({ data, selected }: NodeProps<TransformNodeDa
     </div>
   );
 });
-
-TransformNode.displayName = 'TransformNode';
