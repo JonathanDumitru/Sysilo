@@ -1,0 +1,265 @@
+syntax = "proto3";
+
+package sysilo.agent.v1;
+
+option go_package = "github.com/sysilo/sysilo/proto/agent/v1;agentv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// AgentService defines the communication between agents and the control plane.
+// Agents initiate the connection and maintain a bidirectional stream for
+// receiving tasks and reporting results.
+service AgentService {
+  // Connect establishes a bidirectional stream between agent and gateway.
+  // Agent sends registration and health updates; gateway sends tasks.
+  rpc Connect(stream AgentMessage) returns (stream GatewayMessage);
+
+  // ReportTaskResult sends task execution results (alternative to streaming).
+  rpc ReportTaskResult(TaskResult) returns (TaskResultAck);
+}
+
+// Messages sent from Agent to Gateway
+message AgentMessage {
+  oneof message {
+    AgentRegistration registration = 1;
+    AgentHeartbeat heartbeat = 2;
+    TaskResult task_result = 3;
+    LogBatch logs = 4;
+  }
+}
+
+// Messages sent from Gateway to Agent
+message GatewayMessage {
+  oneof message {
+    RegistrationAck registration_ack = 1;
+    Task task = 2;
+    AgentCommand command = 3;
+  }
+}
+
+// Agent registration sent on connection establishment
+message AgentRegistration {
+  string agent_id = 1;
+  string tenant_id = 2;
+  string agent_name = 3;
+  string version = 4;
+  AgentCapabilities capabilities = 5;
+  map<string, string> labels = 6;
+}
+
+message AgentCapabilities {
+  repeated string supported_adapters = 1;  // e.g., ["postgresql", "mysql", "rest"]
+  int32 max_concurrent_tasks = 2;
+  bool supports_streaming = 3;
+}
+
+message RegistrationAck {
+  bool success = 1;
+  string message = 2;
+  int32 heartbeat_interval_seconds = 3;
+}
+
+// Periodic heartbeat from agent
+message AgentHeartbeat {
+  string agent_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  AgentHealth health = 3;
+  repeated RunningTask running_tasks = 4;
+}
+
+message AgentHealth {
+  HealthStatus status = 1;
+  double cpu_percent = 2;
+  double memory_percent = 3;
+  int64 disk_free_bytes = 4;
+  int32 active_connections = 5;
+}
+
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+}
+
+message RunningTask {
+  string task_id = 1;
+  string integration_id = 2;
+  google.protobuf.Timestamp started_at = 3;
+  TaskProgress progress = 4;
+}
+
+message TaskProgress {
+  int32 percent_complete = 1;
+  string current_step = 2;
+  int64 records_processed = 3;
+}
+
+// Task definition sent from Gateway to Agent
+message Task {
+  string task_id = 1;
+  string integration_id = 2;
+  string tenant_id = 3;
+  TaskType task_type = 4;
+  google.protobuf.Struct config = 5;  // Task-specific configuration
+  TaskPriority priority = 6;
+  int32 timeout_seconds = 7;
+  int32 retry_count = 8;
+  map<string, string> metadata = 9;
+}
+
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_QUERY = 1;           // Execute a database query
+  TASK_TYPE_API_CALL = 2;        // Make an API request
+  TASK_TYPE_FILE_TRANSFER = 3;   // Transfer files
+  TASK_TYPE_DISCOVERY = 4;       // Discover local resources
+  TASK_TYPE_HEALTH_CHECK = 5;    // Check connectivity to a system
+}
+
+enum TaskPriority {
+  TASK_PRIORITY_UNSPECIFIED = 0;
+  TASK_PRIORITY_LOW = 1;
+  TASK_PRIORITY_NORMAL = 2;
+  TASK_PRIORITY_HIGH = 3;
+  TASK_PRIORITY_CRITICAL = 4;
+}
+
+// Task execution result
+message TaskResult {
+  string task_id = 1;
+  string agent_id = 2;
+  TaskStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp completed_at = 5;
+  TaskOutput output = 6;
+  TaskError error = 7;
+  TaskMetrics metrics = 8;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_PENDING = 1;
+  TASK_STATUS_RUNNING = 2;
+  TASK_STATUS_COMPLETED = 3;
+  TASK_STATUS_FAILED = 4;
+  TASK_STATUS_CANCELLED = 5;
+  TASK_STATUS_TIMEOUT = 6;
+}
+
+message TaskOutput {
+  oneof output {
+    QueryResult query_result = 1;
+    ApiCallResult api_result = 2;
+    FileTransferResult file_result = 3;
+    DiscoveryResult discovery_result = 4;
+  }
+}
+
+message QueryResult {
+  repeated Column columns = 1;
+  repeated Row rows = 2;
+  int64 rows_affected = 3;
+  bool has_more = 4;
+  string cursor = 5;
+}
+
+message Column {
+  string name = 1;
+  string data_type = 2;
+  bool nullable = 3;
+}
+
+message Row {
+  repeated google.protobuf.Value values = 1;
+}
+
+message ApiCallResult {
+  int32 status_code = 1;
+  map<string, string> headers = 2;
+  bytes body = 3;
+  int64 latency_ms = 4;
+}
+
+message FileTransferResult {
+  int64 bytes_transferred = 1;
+  string checksum = 2;
+  string destination_path = 3;
+}
+
+message DiscoveryResult {
+  repeated DiscoveredResource resources = 1;
+}
+
+message DiscoveredResource {
+  string resource_type = 1;  // "database", "api", "file_share"
+  string name = 2;
+  string host = 3;
+  int32 port = 4;
+  map<string, string> properties = 5;
+}
+
+message TaskError {
+  string code = 1;
+  string message = 2;
+  string details = 3;
+  bool retryable = 4;
+}
+
+message TaskMetrics {
+  int64 records_read = 1;
+  int64 records_written = 2;
+  int64 bytes_processed = 3;
+  int64 duration_ms = 4;
+}
+
+message TaskResultAck {
+  bool success = 1;
+  string message = 2;
+}
+
+// Log forwarding
+message LogBatch {
+  string agent_id = 1;
+  repeated LogEntry entries = 2;
+}
+
+message LogEntry {
+  google.protobuf.Timestamp timestamp = 1;
+  LogLevel level = 2;
+  string message = 3;
+  string task_id = 4;
+  map<string, string> fields = 5;
+}
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARN = 3;
+  LOG_LEVEL_ERROR = 4;
+}
+
+// Commands from gateway to agent
+message AgentCommand {
+  oneof command {
+    CancelTask cancel_task = 1;
+    UpdateConfig update_config = 2;
+    RestartAgent restart = 3;
+  }
+}
+
+message CancelTask {
+  string task_id = 1;
+  string reason = 2;
+}
+
+message UpdateConfig {
+  map<string, string> config = 1;
+}
+
+message RestartAgent {
+  string reason = 1;
+  int32 delay_seconds = 2;
+}

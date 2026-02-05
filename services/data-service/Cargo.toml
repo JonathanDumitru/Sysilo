@@ -1,0 +1,45 @@
+[package]
+name = "data-service"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sysilo Team"]
+description = "Sysilo Data Hub Service - Catalog, Lineage, and Quality"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+
+# Kafka for streaming ingestion
+rdkafka = { version = "0.36", features = ["cmake-build"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Data profiling
+arrow = { version = "50.0", default-features = false, features = ["json"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "data-service"
+path = "src/main.rs"

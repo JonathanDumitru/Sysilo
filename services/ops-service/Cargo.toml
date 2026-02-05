@@ -1,0 +1,46 @@
+[package]
+name = "ops-service"
+version = "0.1.0"
+edition = "2021"
+description = "Sysilo Operations Center - Monitoring, alerting, and incident management"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1.35", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+
+# Kafka (requires cmake to build)
+# rdkafka = { version = "0.36", features = ["cmake-build"] }
+
+# HTTP client for notifications
+reqwest = { version = "0.11", features = ["json"] }
+
+# Email
+lettre = { version = "0.11", features = ["tokio1", "tokio1-native-tls"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Hashing for audit
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"

@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+vendor/
+target/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
+*.cover
+.coverage
+htmlcov/
+
+# Rust
+Cargo.lock
+debug/
+
+# Go
+go.sum
+
+# Generated
+*.pb.go
+*_pb2.py
+*.pb.ts
+
+# Docker
+.docker/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Temporary
+tmp/
+temp/
+*.tmp
