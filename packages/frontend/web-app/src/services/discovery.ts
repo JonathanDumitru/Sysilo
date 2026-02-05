@@ -33,6 +33,39 @@ export async function runDiscovery(request: DiscoveryRequest): Promise<Discovery
 }
 
 // =============================================================================
+// Discovery Run Status
+// =============================================================================
+
+export interface DiscoveryRun {
+  id: string;
+  connection_id: string;
+  connection_name: string;
+  status: 'pending' | 'scanning' | 'completed' | 'failed';
+  assets_found: number;
+  error_message: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface DiscoveryRunsResponse {
+  runs: DiscoveryRun[];
+}
+
+/**
+ * Get discovery runs by IDs (for polling active runs)
+ */
+export async function getDiscoveryRuns(runIds: string[]): Promise<DiscoveryRun[]> {
+  const params = new URLSearchParams({ ids: runIds.join(',') });
+  const response = await apiFetch<DiscoveryRunsResponse>(
+    `/discovery/runs?${params}`,
+    {
+      headers: { 'X-Tenant-ID': DEV_TENANT_ID },
+    }
+  );
+  return response.runs;
+}
+
+// =============================================================================
 // Development/Mock endpoints
 // =============================================================================
 
