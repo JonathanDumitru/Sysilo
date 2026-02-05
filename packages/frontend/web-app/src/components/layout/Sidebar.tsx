@@ -10,6 +10,7 @@ import {
   Activity,
   Bell,
   AlertOctagon,
+  PlayCircle,
   Shield,
   FileCheck,
   BookOpen,
@@ -36,6 +37,7 @@ const operationsNavigation = [
   { name: 'Operations', href: '/operations', icon: Activity },
   { name: 'Alerts', href: '/operations/alerts', icon: Bell },
   { name: 'Incidents', href: '/operations/incidents', icon: AlertOctagon },
+  { name: 'Playbooks', href: '/operations/playbooks', icon: PlayCircle },
 ];
 
 const governanceNavigation = [

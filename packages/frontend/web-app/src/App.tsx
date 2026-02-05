@@ -12,6 +12,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { OperationsDashboardPage } from './pages/OperationsDashboardPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { IncidentsPage } from './pages/IncidentsPage';
+import { AutomationPlaybooksListPage } from './pages/AutomationPlaybooksListPage';
+import { AutomationPlaybookEditorPage } from './pages/AutomationPlaybookEditorPage';
+import { PlaybookRunDetailPage } from './pages/PlaybookRunDetailPage';
 // Governance Center
 import { GovernanceDashboardPage } from './pages/GovernanceDashboardPage';
 import { PoliciesPage } from './pages/PoliciesPage';
@@ -45,6 +48,10 @@ function App() {
           <Route path="operations" element={<OperationsDashboardPage />} />
           <Route path="operations/alerts" element={<AlertsPage />} />
           <Route path="operations/incidents" element={<IncidentsPage />} />
+          <Route path="operations/playbooks" element={<AutomationPlaybooksListPage />} />
+          <Route path="operations/playbooks/new" element={<AutomationPlaybookEditorPage />} />
+          <Route path="operations/playbooks/:id/edit" element={<AutomationPlaybookEditorPage />} />
+          <Route path="operations/playbooks/:id/runs/:runId" element={<PlaybookRunDetailPage />} />
           {/* Governance Center */}
           <Route path="governance" element={<GovernanceDashboardPage />} />
           <Route path="governance/policies" element={<PoliciesPage />} />
