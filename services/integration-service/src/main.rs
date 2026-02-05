@@ -66,8 +66,38 @@ async fn main() -> anyhow::Result<()> {
             asset_service_url: config.consumer.asset_service_url.clone(),
         };
 
+        // Create separate storage and producer for the consumer
+        let consumer_storage = match Storage::new(&config.database).await {
+            Ok(s) => Some(Arc::new(s)),
+            Err(e) => {
+                tracing::warn!("Consumer storage not available: {}", e);
+                None
+            }
+        };
+
+        let consumer_producer = {
+            let kafka_cfg = crate::kafka::KafkaConfig {
+                bootstrap_servers: config.kafka.brokers.clone(),
+                client_id: "integration-service-consumer".to_string(),
+                acks: "all".to_string(),
+                retries: 3,
+                linger_ms: 5,
+            };
+            match crate::kafka::TaskProducer::new(&kafka_cfg) {
+                Ok(p) => Some(Arc::new(p)),
+                Err(e) => {
+                    tracing::warn!("Consumer Kafka producer not available: {}", e);
+                    None
+                }
+            }
+        };
+
         tokio::spawn(async move {
-            let consumer = match consumer::ResultConsumer::new(&consumer_config) {
+            let consumer = match consumer::ResultConsumer::new(
+                &consumer_config,
+                consumer_storage,
+                consumer_producer,
+            ) {
                 Ok(c) => c,
                 Err(e) => {
                     tracing::error!("Failed to create result consumer: {}", e);

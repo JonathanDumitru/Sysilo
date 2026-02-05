@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::api::ApiError;
 use crate::middleware::TenantContext;
+use crate::playbooks::executor::PlaybookExecutor;
 use crate::playbooks::{Step, StepState, StepStatus, TriggerType, Variable};
 use crate::storage::{PlaybookRow, PlaybookRunRow};
 use crate::AppState;
@@ -416,6 +417,33 @@ pub async fn run_playbook(
             error: "database_error".to_string(),
             message: e.to_string(),
         })?;
+
+    // Dispatch starting steps to Kafka (if producer available)
+    if let Some(producer) = state.engine.kafka_producer() {
+        if let Err(e) = PlaybookExecutor::start_run(
+            producer,
+            &state.storage,
+            row.id,
+            id,
+            &tenant_id,
+            &steps,
+            &req.variables,
+        )
+        .await
+        {
+            tracing::error!(
+                run_id = %row.id,
+                error = %e,
+                "Failed to dispatch playbook steps - run created but not started"
+            );
+            // Run is created but stays in pending - user can retry
+        }
+    } else {
+        tracing::warn!(
+            run_id = %row.id,
+            "No Kafka producer available - playbook run created but steps not dispatched"
+        );
+    }
 
     tracing::info!(
         playbook_id = %id,

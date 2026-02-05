@@ -454,6 +454,26 @@ impl Storage {
 
         Ok(())
     }
+
+    /// Get a playbook run by ID only (used by result handler where tenant_id is unknown)
+    pub async fn get_playbook_run_by_id(
+        &self,
+        run_id: Uuid,
+    ) -> Result<PlaybookRunRow, StorageError> {
+        let row: Option<PlaybookRunRow> = sqlx::query_as(
+            r#"
+            SELECT id, playbook_id, tenant_id, status, variables,
+                   step_states, started_at, completed_at
+            FROM playbook_runs
+            WHERE id = $1
+            "#,
+        )
+        .bind(run_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| StorageError::NotFound(format!("PlaybookRun {}", run_id)))
+    }
 }
 
 /// Database row for integrations

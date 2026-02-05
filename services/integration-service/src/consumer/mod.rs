@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use futures::StreamExt;
 use rdkafka::config::ClientConfig;
@@ -5,7 +7,8 @@ use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::Message;
 use tracing::{error, info, warn};
 
-use crate::kafka::{topics, DiscoveredAsset, TaskResult};
+use crate::kafka::{topics, DiscoveredAsset, TaskProducer, TaskResult};
+use crate::storage::Storage;
 
 /// Configuration for the result consumer
 #[derive(Debug, Clone)]
@@ -30,11 +33,17 @@ pub struct ResultConsumer {
     consumer: StreamConsumer,
     asset_service_url: String,
     http_client: reqwest::Client,
+    storage: Option<Arc<Storage>>,
+    kafka_producer: Option<Arc<TaskProducer>>,
 }
 
 impl ResultConsumer {
     /// Create a new result consumer
-    pub fn new(config: &ConsumerConfig) -> Result<Self> {
+    pub fn new(
+        config: &ConsumerConfig,
+        storage: Option<Arc<Storage>>,
+        kafka_producer: Option<Arc<TaskProducer>>,
+    ) -> Result<Self> {
         let consumer: StreamConsumer = ClientConfig::new()
             .set("bootstrap.servers", &config.bootstrap_servers)
             .set("group.id", &config.group_id)
@@ -54,6 +63,8 @@ impl ResultConsumer {
             consumer,
             asset_service_url: config.asset_service_url.clone(),
             http_client: reqwest::Client::new(),
+            storage,
+            kafka_producer,
         })
     }
 
@@ -91,6 +102,13 @@ impl ResultConsumer {
             "Processing task result"
         );
 
+        // Check if this is a playbook step result
+        if let Some(ref output) = result.output {
+            if output.get("step_id").is_some() {
+                return self.process_playbook_result(&result).await;
+            }
+        }
+
         // Only process successful discovery tasks
         if result.status != "success" {
             return Ok(());
@@ -105,6 +123,75 @@ impl ResultConsumer {
                     self.create_asset(&result.tenant_id, asset).await?;
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    async fn process_playbook_result(&self, result: &TaskResult) -> Result<()> {
+        let (storage, producer) = match (&self.storage, &self.kafka_producer) {
+            (Some(s), Some(p)) => (s, p),
+            _ => {
+                warn!("Cannot process playbook result - storage or producer not available");
+                return Ok(());
+            }
+        };
+
+        let step_id = result
+            .output
+            .as_ref()
+            .and_then(|o| o.get("step_id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+
+        // The Task struct uses run_id field which maps to TaskResult's run_id equivalent.
+        // TaskResult doesn't have a direct run_id field, but we set integration_id = playbook_id
+        // in the executor. The run_id was set on the Task, which should come back via headers
+        // or we can look it up from output. For now, parse from output or integration_id field.
+        let run_id_str = result
+            .output
+            .as_ref()
+            .and_then(|o| o.get("run_id"))
+            .and_then(|v| v.as_str());
+
+        let run_id = if let Some(rid) = run_id_str {
+            rid.parse::<uuid::Uuid>().unwrap_or_default()
+        } else {
+            result
+                .integration_id
+                .parse::<uuid::Uuid>()
+                .unwrap_or_default()
+        };
+
+        let success = result.status == "success";
+        let output = result.output.clone();
+        let error_msg = result.error.as_ref().map(|e| e.message.clone());
+
+        info!(
+            run_id = %run_id,
+            step_id = %step_id,
+            success = success,
+            "Routing playbook step result to handler"
+        );
+
+        if let Err(e) =
+            crate::playbooks::result_handler::PlaybookResultHandler::handle_step_result(
+                producer,
+                storage,
+                run_id,
+                step_id,
+                success,
+                output,
+                error_msg,
+            )
+            .await
+        {
+            error!(
+                run_id = %run_id,
+                step_id = %step_id,
+                error = %e,
+                "Failed to handle playbook step result"
+            );
         }
 
         Ok(())
