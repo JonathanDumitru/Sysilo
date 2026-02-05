@@ -177,7 +177,7 @@ impl AssetService {
             .param("tenant_id", tenant_id.to_string())
             .param("name", req.name.clone())
             .param("asset_type", asset_type_str)
-            .param("status", status_str)
+            .param("status", status_str.clone())
             .param("description", req.description.clone().unwrap_or_default())
             .param("owner", req.owner.clone().unwrap_or_default())
             .param("team", req.team.clone().unwrap_or_default())
