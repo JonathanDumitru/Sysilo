@@ -14,6 +14,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod api;
 mod config;
+mod connections;
 mod consumer;
 mod engine;
 mod kafka;
@@ -23,6 +24,7 @@ mod storage;
 
 use crate::config::Config;
 use crate::engine::Engine;
+use crate::connections::api as connections_api;
 use crate::playbooks::api as playbooks_api;
 use crate::storage::Storage;
 
@@ -146,6 +148,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/discovery/run", post(api::run_discovery))
         // Development/mock endpoints (for local testing without Kafka)
         .route("/dev/mock-discovery", post(api::mock_discovery_result))
+        // Connection endpoints
+        .route("/connections", get(connections_api::list_connections))
+        .route("/connections", post(connections_api::create_connection))
+        .route("/connections/:id", get(connections_api::get_connection))
+        .route("/connections/:id", put(connections_api::update_connection))
+        .route("/connections/:id", delete(connections_api::delete_connection))
+        .route("/connections/:id/test", post(connections_api::test_connection))
         // Tenant context middleware (uses optional for dev - change to strict in production)
         .layer(axum_middleware::from_fn(
             middleware::optional_tenant_context_middleware,

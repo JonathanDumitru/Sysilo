@@ -474,6 +474,194 @@ impl Storage {
 
         row.ok_or_else(|| StorageError::NotFound(format!("PlaybookRun {}", run_id)))
     }
+
+    // =============================================================================
+    // Connection CRUD operations
+    // =============================================================================
+
+    /// List connections for a tenant
+    pub async fn list_connections(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Vec<ConnectionRow>, StorageError> {
+        let rows: Vec<ConnectionRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, name, connector_type, auth_type,
+                   config, credentials, status,
+                   last_tested_at, last_test_status, last_test_error,
+                   created_at, updated_at
+            FROM connections
+            WHERE tenant_id = $1::uuid
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Get a single connection
+    pub async fn get_connection(
+        &self,
+        tenant_id: &str,
+        connection_id: Uuid,
+    ) -> Result<ConnectionRow, StorageError> {
+        let row: Option<ConnectionRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, name, connector_type, auth_type,
+                   config, credentials, status,
+                   last_tested_at, last_test_status, last_test_error,
+                   created_at, updated_at
+            FROM connections
+            WHERE tenant_id = $1::uuid AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(connection_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| StorageError::NotFound(format!("Connection {}", connection_id)))
+    }
+
+    /// Create a new connection
+    pub async fn create_connection(
+        &self,
+        tenant_id: &str,
+        name: &str,
+        connector_type: &str,
+        auth_type: &str,
+        config: serde_json::Value,
+        credentials: serde_json::Value,
+    ) -> Result<ConnectionRow, StorageError> {
+        let row: ConnectionRow = sqlx::query_as(
+            r#"
+            INSERT INTO connections (tenant_id, name, connector_type, auth_type, config, credentials)
+            VALUES ($1::uuid, $2, $3, $4, $5, $6)
+            RETURNING id, tenant_id, name, connector_type, auth_type,
+                      config, credentials, status,
+                      last_tested_at, last_test_status, last_test_error,
+                      created_at, updated_at
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(name)
+        .bind(connector_type)
+        .bind(auth_type)
+        .bind(config)
+        .bind(credentials)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Update a connection
+    pub async fn update_connection(
+        &self,
+        tenant_id: &str,
+        connection_id: Uuid,
+        name: &str,
+        config: serde_json::Value,
+        credentials: Option<serde_json::Value>,
+    ) -> Result<ConnectionRow, StorageError> {
+        let row: ConnectionRow = if let Some(creds) = credentials {
+            sqlx::query_as(
+                r#"
+                UPDATE connections
+                SET name = $3, config = $4, credentials = $5, updated_at = NOW()
+                WHERE tenant_id = $1::uuid AND id = $2
+                RETURNING id, tenant_id, name, connector_type, auth_type,
+                          config, credentials, status,
+                          last_tested_at, last_test_status, last_test_error,
+                          created_at, updated_at
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(connection_id)
+            .bind(name)
+            .bind(config)
+            .bind(creds)
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as(
+                r#"
+                UPDATE connections
+                SET name = $3, config = $4, updated_at = NOW()
+                WHERE tenant_id = $1::uuid AND id = $2
+                RETURNING id, tenant_id, name, connector_type, auth_type,
+                          config, credentials, status,
+                          last_tested_at, last_test_status, last_test_error,
+                          created_at, updated_at
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(connection_id)
+            .bind(name)
+            .bind(config)
+            .fetch_one(&self.pool)
+            .await?
+        };
+
+        Ok(row)
+    }
+
+    /// Delete a connection
+    pub async fn delete_connection(
+        &self,
+        tenant_id: &str,
+        connection_id: Uuid,
+    ) -> Result<(), StorageError> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM connections
+            WHERE tenant_id = $1::uuid AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(connection_id)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(StorageError::NotFound(format!(
+                "Connection {}",
+                connection_id
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Update connection test status
+    pub async fn update_connection_test_status(
+        &self,
+        connection_id: Uuid,
+        status: &str,
+        test_status: &str,
+        test_error: Option<&str>,
+    ) -> Result<(), StorageError> {
+        sqlx::query(
+            r#"
+            UPDATE connections
+            SET status = $2, last_tested_at = NOW(),
+                last_test_status = $3, last_test_error = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(connection_id)
+        .bind(status)
+        .bind(test_status)
+        .bind(test_error)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
 
 /// Database row for integrations
@@ -533,4 +721,22 @@ pub struct PlaybookRunRow {
     pub step_states: serde_json::Value,
     pub started_at: chrono::DateTime<chrono::Utc>,
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Database row for connections
+#[derive(Debug, FromRow)]
+pub struct ConnectionRow {
+    pub id: Uuid,
+    pub tenant_id: Uuid,
+    pub name: String,
+    pub connector_type: String,
+    pub auth_type: String,
+    pub config: serde_json::Value,
+    pub credentials: serde_json::Value,
+    pub status: String,
+    pub last_tested_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_test_status: Option<String>,
+    pub last_test_error: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }

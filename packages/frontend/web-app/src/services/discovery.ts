@@ -1,5 +1,8 @@
 import { apiFetch } from './api.js';
 
+export { listConnections } from './connections';
+export type { Connection } from './connections';
+
 export interface DiscoveryRequest {
   connection_id: string;
   discovery_type?: 'full' | 'incremental';
@@ -11,13 +14,6 @@ export interface DiscoveryResponse {
   task_id: string;
   status: string;
   message: string;
-}
-
-export interface Connection {
-  id: string;
-  name: string;
-  connector_type: string;
-  status: string;
 }
 
 const DEV_TENANT_ID = 'dev-tenant';
@@ -34,34 +30,6 @@ export async function runDiscovery(request: DiscoveryRequest): Promise<Discovery
     },
     body: JSON.stringify(request),
   });
-}
-
-/**
- * List available connections for discovery
- * TODO: Replace with real API when connections service is ready
- */
-export async function listConnections(): Promise<Connection[]> {
-  // Stub data until connections API is implemented
-  return [
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      name: 'Production PostgreSQL',
-      connector_type: 'postgresql',
-      status: 'active',
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000002',
-      name: 'Salesforce CRM',
-      connector_type: 'salesforce',
-      status: 'active',
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000003',
-      name: 'AWS S3 Data Lake',
-      connector_type: 's3',
-      status: 'active',
-    },
-  ];
 }
 
 // =============================================================================
