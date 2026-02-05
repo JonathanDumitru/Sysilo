@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/sysilo/sysilo/agent/internal/adapters/discovery"
 	"github.com/sysilo/sysilo/agent/internal/adapters/postgresql"
 	"github.com/sysilo/sysilo/agent/internal/config"
 	"github.com/sysilo/sysilo/agent/internal/executor"
@@ -59,6 +60,7 @@ func main() {
 
 	// Register adapters
 	exec.RegisterHandler(postgresql.NewAdapter(logger))
+	exec.RegisterHandler(discovery.NewHandler(logger))
 
 	// Initialize tunnel client
 	tunnelClient, err := tunnel.NewClient(logger, cfg, exec)
