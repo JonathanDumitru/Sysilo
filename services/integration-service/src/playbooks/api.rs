@@ -506,7 +506,7 @@ pub async fn approve_run(
     Extension(tenant): Extension<TenantContext>,
     Path(id): Path<Uuid>,
     Json(req): Json<ApprovalRequest>,
-) -> Result<Json<ApprovalResponse>, ApiError> {
+) -> Result<Json<PlaybookRunResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
 
     // Get the current run
@@ -533,7 +533,7 @@ pub async fn approve_run(
     // Update status to running (resume execution)
     state
         .storage
-        .update_playbook_run(id, "running", row.step_states)
+        .update_playbook_run(id, "running", row.step_states.clone())
         .await
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
@@ -547,11 +547,18 @@ pub async fn approve_run(
         "Playbook run approved"
     );
 
-    Ok(Json(ApprovalResponse {
-        run_id: id,
-        status: "running".to_string(),
-        message: "Run approved and resumed".to_string(),
-    }))
+    // Re-fetch the updated run to return
+    let updated_row = state
+        .storage
+        .get_playbook_run(&tenant_id, id)
+        .await
+        .map_err(|e| ApiError {
+            error: "database_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let response = run_row_to_response(updated_row)?;
+    Ok(Json(response))
 }
 
 /// POST /runs/:id/reject - Reject a playbook run waiting for approval
@@ -560,7 +567,7 @@ pub async fn reject_run(
     Extension(tenant): Extension<TenantContext>,
     Path(id): Path<Uuid>,
     Json(req): Json<ApprovalRequest>,
-) -> Result<Json<ApprovalResponse>, ApiError> {
+) -> Result<Json<PlaybookRunResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
 
     // Get the current run
@@ -587,7 +594,7 @@ pub async fn reject_run(
     // Update status to cancelled
     state
         .storage
-        .update_playbook_run(id, "cancelled", row.step_states)
+        .update_playbook_run(id, "cancelled", row.step_states.clone())
         .await
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
@@ -601,11 +608,16 @@ pub async fn reject_run(
         "Playbook run rejected"
     );
 
-    Ok(Json(ApprovalResponse {
-        run_id: id,
-        status: "cancelled".to_string(),
-        message: req
-            .reason
-            .unwrap_or_else(|| "Run rejected by user".to_string()),
-    }))
+    // Re-fetch the updated run to return
+    let updated_row = state
+        .storage
+        .get_playbook_run(&tenant_id, id)
+        .await
+        .map_err(|e| ApiError {
+            error: "database_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let response = run_row_to_response(updated_row)?;
+    Ok(Json(response))
 }
