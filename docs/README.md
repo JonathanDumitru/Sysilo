@@ -36,3 +36,4 @@ This is the working documentation set derived from the platform plan at
 - Diagrams index: `docs/diagrams/README.md`
 - ADRs: `docs/decisions/README.md`
 - Glossary: `docs/glossary.md`
+- Implementation plans: `docs/plans/`

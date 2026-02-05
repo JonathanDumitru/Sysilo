@@ -50,7 +50,7 @@ flowchart LR
 
 - Integration Studio
 - Data Hub
-- Asset Registry
+- Asset Registry (grid + graph views of asset relationships)
 - Rationalization Engine
 - AI Engine
 - Operations Center

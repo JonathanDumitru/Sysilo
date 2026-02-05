@@ -37,3 +37,4 @@ flowchart TB
 
 - Capabilities are grouped by outcome to keep the roadmap aligned to business value.
 - The AI engine is horizontal and should be modeled as shared infrastructure.
+- The Asset Registry now includes a graph view that visualizes relationships derived from shared vendor, team, and tags.

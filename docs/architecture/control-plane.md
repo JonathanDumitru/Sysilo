@@ -28,6 +28,21 @@ flowchart TB
   Bus --> Blob[(Object Storage)]
 ```
 
+## Discovery task flow (current)
+
+```mermaid
+flowchart LR
+  UI["Web App (Asset Registry)"] -->|"POST /discovery/run"| IS["Integration Service"]
+  IS -->|"publish discovery task"| Kafka["Kafka"]
+  Kafka -->|"dispatch task"| Agent["Agent"]
+  Agent -->|"publish results"| Kafka
+  Kafka -->|"consume results"| IS
+  IS -->|"POST /assets"| AssetSvc["Asset Service"]
+  UI -->|"GET /assets"| AssetSvc
+```
+
+For local development, `POST /dev/mock-discovery` on the integration-service bypasses Kafka and sends generated assets directly to the Asset Service.
+
 ## Service boundaries
 
 - API Gateway: authentication, routing, rate limiting

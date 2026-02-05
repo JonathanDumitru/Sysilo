@@ -132,6 +132,10 @@ Environment overrides:
 | `KAFKA_GROUP_ID` | `integration-service` | Consumer group |
 | `KAFKA_TASK_TOPIC` | `sysilo.tasks` | Task topic |
 | `KAFKA_RESULT_TOPIC` | `sysilo.results` | Result topic |
+| `CONSUMER_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers for the result consumer |
+| `CONSUMER_GROUP_ID` | `integration-service-consumers` | Result consumer group |
+| `CONSUMER_ASSET_SERVICE_URL` | `http://localhost:8082` | Base URL for asset creation from discovery results (set to the Asset Service or API Gateway in local dev) |
+| `CONSUMER_ENABLED` | `true` | Enable/disable the result consumer loop |
 | `ENGINE_MAX_CONCURRENT_RUNS` | `100` | Engine concurrency |
 | `ENGINE_DEFAULT_TIMEOUT_SECONDS` | `300` | Task timeout |
 

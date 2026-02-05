@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
@@ -120,7 +120,6 @@ function nodesToSteps(nodes: Node[], edges: Edge[]): Step[] {
 function PlaybookEditorContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
   const isNew = !id || id === 'new';
@@ -173,7 +172,14 @@ function PlaybookEditorContent() {
 
       if (!stepType || !nodeDataStr) return;
 
-      const parsedData = JSON.parse(nodeDataStr) as { name: string; config: Record<string, unknown> };
+      // Safely parse node data with error handling
+      let parsedData: { name: string; config: Record<string, unknown> };
+      try {
+        parsedData = JSON.parse(nodeDataStr) as { name: string; config: Record<string, unknown> };
+      } catch {
+        console.error('Invalid node data format during drop');
+        return;
+      }
 
       // Get the position where the node was dropped
       const position = screenToFlowPosition({
@@ -298,6 +304,7 @@ function PlaybookEditorContent() {
             onChange={(e) => setName(e.target.value)}
             className="text-lg font-semibold border-none focus:ring-0 focus:outline-none bg-transparent"
             placeholder="Playbook name"
+            aria-label="Playbook name"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -335,7 +342,6 @@ function PlaybookEditorContent() {
 
         {/* React Flow canvas */}
         <div
-          ref={reactFlowWrapper}
           className="flex-1 bg-gray-50"
           onDragOver={onDragOver}
           onDrop={onDrop}
