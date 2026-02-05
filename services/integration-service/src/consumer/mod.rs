@@ -120,10 +120,28 @@ impl ResultConsumer {
                     self.create_asset(&result.tenant_id, asset).await?;
                 }
 
-                // TODO: Update discovery run status via run_id passed through Kafka headers.
-                // Currently the run_id is set on the Task when dispatched but doesn't
-                // round-trip through TaskResult. For V1, the frontend polls discovery_runs
-                // which stay in 'scanning' state until we add header-based run_id tracking.
+                // Update discovery run status via task_id matching
+                if let Some(storage) = &self.storage {
+                    let task_uuid: uuid::Uuid = result.task_id.parse().unwrap_or_default();
+                    if task_uuid != uuid::Uuid::nil() {
+                        let (status, error_msg) = if result.status == "success" {
+                            ("completed", None)
+                        } else {
+                            ("failed", result.error.as_ref().map(|e| e.message.as_str()))
+                        };
+
+                        if let Err(e) = storage
+                            .update_discovery_run_by_task_id(task_uuid, status, asset_count, error_msg)
+                            .await
+                        {
+                            error!(
+                                task_id = %result.task_id,
+                                error = %e,
+                                "Failed to update discovery run status"
+                            );
+                        }
+                    }
+                }
 
                 info!(
                     task_id = %result.task_id,

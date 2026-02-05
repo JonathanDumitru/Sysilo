@@ -118,11 +118,23 @@ func (h *Handler) parseConfig(raw map[string]interface{}) (*DiscoveryConfig, err
 		return nil, err
 	}
 
+	// Validate required connection fields
+	if config.Connection.Host == "" {
+		return nil, fmt.Errorf("connection.host is required")
+	}
+	if config.Connection.User == "" {
+		return nil, fmt.Errorf("connection.user is required")
+	}
+	if config.Connection.Database == "" {
+		return nil, fmt.Errorf("connection.database is required")
+	}
+
+	// Apply defaults
 	if config.Connection.Port == 0 {
 		config.Connection.Port = 5432
 	}
 	if config.Connection.SSLMode == "" {
-		config.Connection.SSLMode = "disable"
+		config.Connection.SSLMode = "require"
 	}
 	if config.DiscoveryType == "" {
 		config.DiscoveryType = "full"

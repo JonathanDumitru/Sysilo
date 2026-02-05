@@ -372,7 +372,6 @@ pub async fn run_discovery(
     Json(req): Json<DiscoveryRequest>,
 ) -> Result<(StatusCode, Json<DiscoveryResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
-    let run_id = Uuid::new_v4();
     let task_id = Uuid::new_v4();
 
     // Fetch connection details so we can embed them in the task
@@ -385,15 +384,17 @@ pub async fn run_discovery(
             message: format!("Connection {} not found: {}", req.connection_id, e),
         })?;
 
-    // Create discovery run record for status tracking
-    state
+    // Create discovery run record for status tracking (with task_id for result matching)
+    let discovery_run = state
         .storage
-        .create_discovery_run(&tenant_id, req.connection_id, &connection.name)
+        .create_discovery_run(&tenant_id, req.connection_id, &connection.name, task_id)
         .await
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
         })?;
+
+    let run_id = discovery_run.id;
 
     // Build task config with connection details embedded
     // so the agent can connect directly

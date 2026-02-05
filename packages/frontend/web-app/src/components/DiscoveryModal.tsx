@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   X,
   Search,
@@ -51,8 +51,6 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
   const { mutate: mockDiscovery } = useMockDiscovery();
   const { data: discoveryRuns } = useDiscoveryRuns(activeRunIds);
 
-  if (!isOpen) return null;
-
   // Derive status from discovery runs
   const allTerminal = discoveryRuns?.every(
     (r) => r.status === 'completed' || r.status === 'failed'
@@ -60,11 +58,14 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
   const totalAssetsFound = discoveryRuns?.reduce((sum, r) => sum + r.assets_found, 0) ?? 0;
   const connectionsCompleted = discoveryRuns?.filter((r) => r.status === 'completed').length ?? 0;
 
-  // Auto-advance to complete phase
-  if (phase === 'running' && allTerminal && discoveryRuns && discoveryRuns.length > 0) {
-    // Use setTimeout to avoid setState during render
-    setTimeout(() => setPhase('complete'), 0);
-  }
+  // Auto-advance to complete phase when all runs finish
+  useEffect(() => {
+    if (phase === 'running' && allTerminal && discoveryRuns && discoveryRuns.length > 0) {
+      setPhase('complete');
+    }
+  }, [phase, allTerminal, discoveryRuns]);
+
+  if (!isOpen) return null;
 
   const handleToggleConnection = (id: string) => {
     setSelectedConnections((prev) =>
@@ -98,8 +99,13 @@ export function DiscoveryModal({ isOpen, onClose }: DiscoveryModalProps) {
           console.error('Failed to start discovery for', connectionId, err);
         }
       }
-      setActiveRunIds(runIds);
-      setPhase('running');
+      if (runIds.length === 0) {
+        // All dispatches failed — show error state
+        setPhase('complete');
+      } else {
+        setActiveRunIds(runIds);
+        setPhase('running');
+      }
     }
   };
 

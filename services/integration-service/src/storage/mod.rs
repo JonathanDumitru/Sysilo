@@ -673,18 +673,20 @@ impl Storage {
         tenant_id: &str,
         connection_id: Uuid,
         connection_name: &str,
+        task_id: Uuid,
     ) -> Result<DiscoveryRunRow, StorageError> {
         let row: DiscoveryRunRow = sqlx::query_as(
             r#"
-            INSERT INTO discovery_runs (tenant_id, connection_id, connection_name, status)
-            VALUES ($1::uuid, $2, $3, 'pending')
-            RETURNING id, tenant_id, connection_id, connection_name, status,
+            INSERT INTO discovery_runs (tenant_id, connection_id, connection_name, task_id, status)
+            VALUES ($1::uuid, $2, $3, $4, 'pending')
+            RETURNING id, tenant_id, connection_id, connection_name, task_id, status,
                       assets_found, error_message, started_at, completed_at, created_at
             "#,
         )
         .bind(tenant_id)
         .bind(connection_id)
         .bind(connection_name)
+        .bind(task_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -699,7 +701,7 @@ impl Storage {
     ) -> Result<Vec<DiscoveryRunRow>, StorageError> {
         let rows: Vec<DiscoveryRunRow> = sqlx::query_as(
             r#"
-            SELECT id, tenant_id, connection_id, connection_name, status,
+            SELECT id, tenant_id, connection_id, connection_name, task_id, status,
                    assets_found, error_message, started_at, completed_at, created_at
             FROM discovery_runs
             WHERE tenant_id = $1::uuid AND id = ANY($2)
@@ -722,7 +724,7 @@ impl Storage {
     ) -> Result<Vec<DiscoveryRunRow>, StorageError> {
         let rows: Vec<DiscoveryRunRow> = sqlx::query_as(
             r#"
-            SELECT id, tenant_id, connection_id, connection_name, status,
+            SELECT id, tenant_id, connection_id, connection_name, task_id, status,
                    assets_found, error_message, started_at, completed_at, created_at
             FROM discovery_runs
             WHERE tenant_id = $1::uuid
@@ -760,6 +762,37 @@ impl Storage {
             "#,
         )
         .bind(run_id)
+        .bind(status)
+        .bind(assets_found)
+        .bind(error_message)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update discovery run status by task_id (used when consumer processes results)
+    pub async fn update_discovery_run_by_task_id(
+        &self,
+        task_id: Uuid,
+        status: &str,
+        assets_found: i32,
+        error_message: Option<&str>,
+    ) -> Result<(), StorageError> {
+        sqlx::query(
+            r#"
+            UPDATE discovery_runs
+            SET status = $2,
+                assets_found = $3,
+                error_message = $4,
+                completed_at = CASE
+                    WHEN $2 IN ('completed', 'failed') THEN NOW()
+                    ELSE completed_at
+                END
+            WHERE task_id = $1
+            "#,
+        )
+        .bind(task_id)
         .bind(status)
         .bind(assets_found)
         .bind(error_message)
@@ -871,6 +904,7 @@ pub struct DiscoveryRunRow {
     pub tenant_id: Uuid,
     pub connection_id: Uuid,
     pub connection_name: String,
+    pub task_id: Option<Uuid>,
     pub status: String,
     pub assets_found: i32,
     pub error_message: Option<String>,
