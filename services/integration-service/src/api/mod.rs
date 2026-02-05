@@ -339,6 +339,32 @@ pub struct DiscoveryResponse {
     pub message: String,
 }
 
+/// A single discovery run status
+#[derive(Debug, Serialize)]
+pub struct DiscoveryRunResponse {
+    pub id: Uuid,
+    pub connection_id: Uuid,
+    pub connection_name: String,
+    pub status: String,
+    pub assets_found: i32,
+    pub error_message: Option<String>,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+}
+
+/// Response for listing discovery runs
+#[derive(Debug, Serialize)]
+pub struct DiscoveryRunsListResponse {
+    pub runs: Vec<DiscoveryRunResponse>,
+}
+
+/// Query params for filtering discovery runs by ID
+#[derive(Debug, Deserialize)]
+pub struct DiscoveryRunsQuery {
+    /// Comma-separated list of run IDs to fetch
+    pub ids: Option<String>,
+}
+
 /// Start a discovery run against a connection
 pub async fn run_discovery(
     State(state): State<Arc<AppState>>,
@@ -349,20 +375,51 @@ pub async fn run_discovery(
     let run_id = Uuid::new_v4();
     let task_id = Uuid::new_v4();
 
-    // Create a discovery task
+    // Fetch connection details so we can embed them in the task
+    let connection = state
+        .storage
+        .get_connection(&tenant_id, req.connection_id)
+        .await
+        .map_err(|e| ApiError {
+            error: "connection_not_found".to_string(),
+            message: format!("Connection {} not found: {}", req.connection_id, e),
+        })?;
+
+    // Create discovery run record for status tracking
+    state
+        .storage
+        .create_discovery_run(&tenant_id, req.connection_id, &connection.name)
+        .await
+        .map_err(|e| ApiError {
+            error: "database_error".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // Build task config with connection details embedded
+    // so the agent can connect directly
+    let mut conn_config = connection.config.clone();
+    // Merge credentials into the connection config
+    if let Some(creds_obj) = connection.credentials.as_object() {
+        if let Some(config_obj) = conn_config.as_object_mut() {
+            for (k, v) in creds_obj {
+                config_obj.insert(k.clone(), v.clone());
+            }
+        }
+    }
+
     let task = crate::engine::Task {
         id: task_id,
         run_id,
-        integration_id: Uuid::nil(), // No integration - direct discovery
+        integration_id: Uuid::nil(),
         tenant_id: tenant_id.clone(),
         task_type: "discovery".to_string(),
         config: serde_json::json!({
-            "connection_id": req.connection_id,
+            "connection": conn_config,
             "discovery_type": format!("{:?}", req.discovery_type).to_lowercase(),
             "resource_types": req.resource_types,
         }),
         priority: 2,
-        timeout_seconds: 300, // 5 minute timeout for discovery
+        timeout_seconds: 300,
         sequence: 0,
         depends_on: vec![],
     };
@@ -374,11 +431,15 @@ pub async fn run_discovery(
             message: e.to_string(),
         })?;
 
+        // Mark as scanning now that the task is dispatched
+        let _ = state.storage.mark_discovery_scanning(run_id).await;
+
         tracing::info!(
             run_id = %run_id,
             task_id = %task_id,
             connection_id = %req.connection_id,
-            "Discovery task dispatched"
+            connection_name = %connection.name,
+            "Discovery task dispatched with connection details"
         );
     } else {
         tracing::warn!(
@@ -397,6 +458,45 @@ pub async fn run_discovery(
             message: "Discovery task dispatched to agent".to_string(),
         }),
     ))
+}
+
+/// Get discovery runs (optionally filtered by IDs for polling)
+pub async fn list_discovery_runs(
+    State(state): State<Arc<AppState>>,
+    Extension(tenant): Extension<TenantContext>,
+    axum::extract::Query(query): axum::extract::Query<DiscoveryRunsQuery>,
+) -> Result<Json<DiscoveryRunsListResponse>, ApiError> {
+    let tenant_id = tenant.tenant_id.to_string();
+
+    let rows = if let Some(ids_str) = &query.ids {
+        let run_ids: Vec<Uuid> = ids_str
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
+        state.storage.get_discovery_runs(&tenant_id, &run_ids).await
+    } else {
+        state.storage.list_discovery_runs(&tenant_id, 20).await
+    }
+    .map_err(|e| ApiError {
+        error: "database_error".to_string(),
+        message: e.to_string(),
+    })?;
+
+    let runs = rows
+        .into_iter()
+        .map(|r| DiscoveryRunResponse {
+            id: r.id,
+            connection_id: r.connection_id,
+            connection_name: r.connection_name,
+            status: r.status,
+            assets_found: r.assets_found,
+            error_message: r.error_message,
+            started_at: r.started_at.to_rfc3339(),
+            completed_at: r.completed_at.map(|t| t.to_rfc3339()),
+        })
+        .collect();
+
+    Ok(Json(DiscoveryRunsListResponse { runs }))
 }
 
 // =============================================================================
