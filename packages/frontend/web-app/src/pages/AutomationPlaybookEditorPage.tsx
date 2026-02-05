@@ -27,7 +27,7 @@ import {
   ApprovalStepNode,
   type StepNodeData,
 } from '@/components/playbooks/nodes';
-import { PlaybookToolbox } from '@/components/playbooks/PlaybookToolbox';
+import { PlaybookSidebar } from '@/components/playbooks/PlaybookSidebar';
 import {
   usePlaybook,
   useCreatePlaybook,
@@ -337,8 +337,8 @@ function PlaybookEditorContent() {
 
       {/* Main content */}
       <div className="flex-1 flex">
-        {/* Toolbox sidebar */}
-        <PlaybookToolbox />
+        {/* Sidebar with toolbox and variables */}
+        <PlaybookSidebar variables={variables} onVariablesChange={setVariables} />
 
         {/* React Flow canvas */}
         <div
