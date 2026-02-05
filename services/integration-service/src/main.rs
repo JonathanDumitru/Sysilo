@@ -56,6 +56,31 @@ async fn main() -> anyhow::Result<()> {
     let engine = Engine::new(config.clone());
     info!("Execution engine initialized");
 
+    // Start result consumer in background
+    if config.consumer.enabled {
+        let consumer_config = consumer::ConsumerConfig {
+            bootstrap_servers: config.consumer.bootstrap_servers.clone(),
+            group_id: config.consumer.group_id.clone(),
+            asset_service_url: config.consumer.asset_service_url.clone(),
+        };
+
+        tokio::spawn(async move {
+            let consumer = match consumer::ResultConsumer::new(&consumer_config) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::error!("Failed to create result consumer: {}", e);
+                    return;
+                }
+            };
+
+            if let Err(e) = consumer.run().await {
+                tracing::error!("Result consumer error: {}", e);
+            }
+        });
+
+        info!("Result consumer started");
+    }
+
     // Create application state
     let state = Arc::new(AppState {
         config: config.clone(),

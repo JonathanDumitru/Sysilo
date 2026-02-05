@@ -8,6 +8,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub kafka: KafkaConfig,
     pub engine: EngineConfig,
+    pub consumer: ConsumerConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -42,6 +43,14 @@ impl KafkaConfig {
 pub struct EngineConfig {
     pub max_concurrent_runs: usize,
     pub default_timeout_seconds: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConsumerConfig {
+    pub bootstrap_servers: String,
+    pub group_id: String,
+    pub asset_service_url: String,
+    pub enabled: bool,
 }
 
 impl Config {
@@ -80,6 +89,18 @@ impl Config {
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(300),
+            },
+            consumer: ConsumerConfig {
+                bootstrap_servers: env::var("CONSUMER_BOOTSTRAP_SERVERS")
+                    .unwrap_or_else(|_| "localhost:9092".to_string()),
+                group_id: env::var("CONSUMER_GROUP_ID")
+                    .unwrap_or_else(|_| "integration-service-consumers".to_string()),
+                asset_service_url: env::var("CONSUMER_ASSET_SERVICE_URL")
+                    .unwrap_or_else(|_| "http://localhost:8082".to_string()),
+                enabled: env::var("CONSUMER_ENABLED")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(true),
             },
         })
     }
