@@ -119,6 +119,7 @@ impl PlaybookExecutor {
             tenant_id: tenant_id.to_string(),
             task_type: "playbook_step".to_string(),
             config: serde_json::json!({
+                "run_id": run_id.to_string(),
                 "step_id": step.id,
                 "step_type": step_type_str,
                 "step_name": step.name,
