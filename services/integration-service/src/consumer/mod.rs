@@ -109,20 +109,35 @@ impl ResultConsumer {
             }
         }
 
-        // Only process successful discovery tasks
-        if result.status != "success" {
-            return Ok(());
-        }
-
-        // Extract discovered assets from output
+        // Process discovery results
         if let Some(output) = &result.output {
             if let Some(assets) = output.get("discovered_assets") {
                 let discovered: Vec<DiscoveredAsset> = serde_json::from_value(assets.clone())?;
+                let asset_count = discovered.len() as i32;
 
-                for asset in discovered {
-                    self.create_asset(&result.tenant_id, asset).await?;
+                // Create assets in the registry
+                for asset in &discovered {
+                    self.create_asset(&result.tenant_id, asset.clone()).await?;
                 }
+
+                // TODO: Update discovery run status via run_id passed through Kafka headers.
+                // Currently the run_id is set on the Task when dispatched but doesn't
+                // round-trip through TaskResult. For V1, the frontend polls discovery_runs
+                // which stay in 'scanning' state until we add header-based run_id tracking.
+
+                info!(
+                    task_id = %result.task_id,
+                    assets_created = asset_count,
+                    "Processed discovery results"
+                );
+
+                return Ok(());
             }
+        }
+
+        // Non-discovery, non-playbook results
+        if result.status != "success" {
+            return Ok(());
         }
 
         Ok(())
