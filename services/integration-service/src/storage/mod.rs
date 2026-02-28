@@ -818,6 +818,44 @@ impl Storage {
 
         Ok(())
     }
+
+    // =============================================================================
+    // Resource count queries (for plan limit enforcement)
+    // =============================================================================
+
+    pub async fn count_integrations(&self, tenant_id: &str) -> Result<i64, StorageError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM integrations WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn count_connections(&self, tenant_id: &str) -> Result<i64, StorageError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM connections WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn count_playbooks(&self, tenant_id: &str) -> Result<i64, StorageError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM playbooks WHERE tenant_id = $1::uuid")
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn count_monthly_runs(&self, tenant_id: &str) -> Result<i64, StorageError> {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM integration_runs WHERE tenant_id = $1 AND created_at >= date_trunc('month', NOW())"
+        )
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(count)
+    }
 }
 
 /// Database row for integrations

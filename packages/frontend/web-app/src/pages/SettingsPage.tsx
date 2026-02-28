@@ -1,9 +1,53 @@
+import { usePlan } from '../hooks/usePlan';
+import { useBillingPortal } from '../hooks/useBilling';
+import { UsageMeter } from '../components/billing/UsageMeter';
+import { PlanBadge } from '../components/billing/PlanBadge';
+import { useNavigate } from 'react-router-dom';
+
 export function SettingsPage() {
+  const { planName, planStatus, isTrial, trialDaysLeft } = usePlan();
+  const portal = useBillingPortal();
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500">Manage your workspace and preferences</p>
+      </div>
+
+      {/* Billing & Plan */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Plan & Billing</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Current plan:</span>
+              <PlanBadge />
+              {isTrial && trialDaysLeft !== null && (
+                <span className="text-xs text-amber-600">{trialDaysLeft} days left</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/pricing')}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+              >
+                {planStatus === 'active' ? 'Change Plan' : 'Upgrade'}
+              </button>
+              {planStatus === 'active' && (
+                <button
+                  onClick={() => portal.mutate()}
+                  disabled={portal.isPending}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Manage Billing
+                </button>
+              )}
+            </div>
+          </div>
+          <UsageMeter />
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">

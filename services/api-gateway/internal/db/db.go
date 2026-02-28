@@ -21,6 +21,8 @@ type DB struct {
 	Integrations *IntegrationRepository
 	Runs         *RunRepository
 	Users        *UserRepository
+	Plans        *PlanRepository
+	Usage        *UsageRepository
 }
 
 // New creates a new database connection and initializes repositories
@@ -61,6 +63,8 @@ func New(cfg config.DatabaseConfig, logger *zap.Logger) (*DB, error) {
 	db.Integrations = &IntegrationRepository{db: db}
 	db.Runs = &RunRepository{db: db}
 	db.Users = &UserRepository{db: db}
+	db.Plans = &PlanRepository{db: db}
+	db.Usage = &UsageRepository{db: db}
 
 	return db, nil
 }

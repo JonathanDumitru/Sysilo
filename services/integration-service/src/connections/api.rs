@@ -114,10 +114,22 @@ pub async fn create_connection(
     Json(req): Json<CreateConnectionRequest>,
 ) -> Result<(StatusCode, Json<ConnectionResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let limits = &tenant.plan_limits;
+
+    // Check connection count limit
+    if !limits.is_unlimited(limits.max_connections) {
+        let count = state.storage.count_connections(&tenant_id).await
+            .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+        if count >= limits.max_connections {
+            return Err(ApiError::limit_reached("connections", count, limits.max_connections, &tenant.plan_name));
+        }
+    }
 
     validate_config(&req.connector_type, &req.config).map_err(|e| ApiError {
         error: "validation_error".to_string(),
         message: e,
+        status: Some(StatusCode::BAD_REQUEST),
+        resource: None, current: None, limit: None, plan: None,
     })?;
 
     let row = state

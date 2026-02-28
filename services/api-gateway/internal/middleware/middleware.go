@@ -208,6 +208,37 @@ func RequireRole(requiredRoles ...string) func(next http.Handler) http.Handler {
 	}
 }
 
+// PlanLoader is a function that loads plan info for a tenant
+type PlanLoader func(ctx context.Context, tenantID string) (*PlanInfo, error)
+
+// LoadTenantPlan loads the tenant's plan into context after tenant is resolved
+func LoadTenantPlan(logger *zap.Logger, loader PlanLoader) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tenantID := GetTenantID(r.Context())
+			if tenantID == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			info, err := loader(r.Context(), tenantID)
+			if err != nil {
+				logger.Error("Failed to load tenant plan", zap.Error(err), zap.String("tenant_id", tenantID))
+				// Don't block the request, just proceed without plan context
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if info != nil {
+				ctx := SetPlanContext(r.Context(), *info)
+				r = r.WithContext(ctx)
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RateLimit returns a middleware that rate limits requests
 func RateLimit(cfg config.RateLimitConfig) func(next http.Handler) http.Handler {
 	// TODO: Implement proper rate limiting with Redis

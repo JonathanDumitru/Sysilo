@@ -12,6 +12,35 @@ use uuid::Uuid;
 const TENANT_ID_HEADER: &str = "x-tenant-id";
 const USER_ID_HEADER: &str = "x-user-id";
 const USER_ROLE_HEADER: &str = "x-user-role";
+const PLAN_NAME_HEADER: &str = "x-plan-name";
+const PLAN_LIMITS_HEADER: &str = "x-plan-limits";
+
+/// Plan limits passed from API Gateway
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct PlanLimits {
+    #[serde(default = "default_unlimited")]
+    pub max_integrations: i64,
+    #[serde(default = "default_unlimited")]
+    pub max_connections: i64,
+    #[serde(default = "default_unlimited")]
+    pub max_playbooks: i64,
+    #[serde(default = "default_unlimited")]
+    pub max_runs_per_month: i64,
+    #[serde(default = "default_unlimited")]
+    pub max_agents: i64,
+    #[serde(default = "default_unlimited")]
+    pub max_users: i64,
+    #[serde(default)]
+    pub audit_retention_days: i64,
+}
+
+fn default_unlimited() -> i64 { -1 }
+
+impl PlanLimits {
+    pub fn is_unlimited(&self, val: i64) -> bool {
+        val < 0
+    }
+}
 
 /// Tenant context extracted from request headers
 #[derive(Debug, Clone)]
@@ -19,6 +48,8 @@ pub struct TenantContext {
     pub tenant_id: Uuid,
     pub user_id: Option<Uuid>,
     pub user_role: Option<String>,
+    pub plan_name: String,
+    pub plan_limits: PlanLimits,
 }
 
 /// Error response for missing tenant context
@@ -58,10 +89,26 @@ pub fn extract_tenant_context(headers: &HeaderMap) -> Result<TenantContext, Tena
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
+    // Extract plan name (optional, defaults to "trial")
+    let plan_name = headers
+        .get(PLAN_NAME_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("trial")
+        .to_string();
+
+    // Extract plan limits (optional, defaults to unlimited)
+    let plan_limits = headers
+        .get(PLAN_LIMITS_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| serde_json::from_str::<PlanLimits>(s).ok())
+        .unwrap_or_default();
+
     Ok(TenantContext {
         tenant_id,
         user_id,
         user_role,
+        plan_name,
+        plan_limits,
     })
 }
 
@@ -92,11 +139,13 @@ pub async fn optional_tenant_context_middleware(
     next: Next,
 ) -> Response {
     let context = extract_tenant_context(request.headers()).unwrap_or_else(|_| {
-        // Default tenant for development
+        // Default tenant for development (unlimited plan)
         TenantContext {
             tenant_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
             user_id: None,
             user_role: Some("admin".to_string()),
+            plan_name: "enterprise".to_string(),
+            plan_limits: PlanLimits::default(),
         }
     });
     request.extensions_mut().insert(context);

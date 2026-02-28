@@ -29,6 +29,8 @@ import { PlaybooksPage } from './pages/PlaybooksPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 // AI Components
 import { AIAssistButton } from './components/ai';
+// Billing
+import { PricingPage } from './pages/PricingPage';
 
 function App() {
   return (
@@ -64,6 +66,7 @@ function App() {
           <Route path="rationalization/scenarios" element={<ScenariosPage />} />
           <Route path="rationalization/playbooks" element={<PlaybooksPage />} />
           <Route path="rationalization/projects" element={<ProjectsPage />} />
+          <Route path="pricing" element={<PricingPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

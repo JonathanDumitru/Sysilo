@@ -80,6 +80,26 @@ func main() {
 	r.Get("/health", h.Health)
 	r.Get("/ready", h.Ready)
 
+	// Plan loader: queries the DB for tenant plan info
+	planLoader := func(ctx context.Context, tenantID string) (*middleware.PlanInfo, error) {
+		tp, err := database.Plans.GetTenantPlan(ctx, tenantID)
+		if err != nil || tp == nil || tp.Plan == nil {
+			return nil, err
+		}
+		return &middleware.PlanInfo{
+			Name:     tp.Plan.Name,
+			Status:   tp.PlanStatus,
+			Features: tp.Plan.Features,
+			Limits:   tp.Plan.Limits,
+		}, nil
+	}
+
+	// Stripe webhook (no auth — Stripe signs with its own secret)
+	r.Post("/api/v1/billing/webhooks", h.HandleStripeWebhook)
+
+	// Public plan listing (no auth needed for pricing page)
+	r.Get("/api/v1/plans", h.ListPlans)
+
 	// API routes (auth required)
 	r.Route("/api/v1", func(r chi.Router) {
 		// Auth middleware
@@ -88,8 +108,23 @@ func main() {
 		// Tenant context
 		r.Use(middleware.TenantContext(logger))
 
+		// Load tenant plan into context
+		r.Use(middleware.LoadTenantPlan(logger, planLoader))
+
+		// Plan gate (feature gating)
+		r.Use(middleware.PlanGate(logger))
+
 		// Rate limiting
 		r.Use(middleware.RateLimit(cfg.RateLimit))
+
+		// Plan & billing
+		r.Get("/plan", h.GetCurrentPlan)
+		r.Get("/plan/usage", h.GetPlanUsage)
+		r.Route("/billing", func(r chi.Router) {
+			r.Post("/checkout", h.CreateCheckoutSession)
+			r.Post("/portal", h.CreatePortalSession)
+			r.Get("/subscription", h.GetSubscription)
+		})
 
 		// Agents
 		r.Route("/agents", func(r chi.Router) {

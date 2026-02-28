@@ -24,12 +24,66 @@ pub struct ApiResponse<T> {
 pub struct ApiError {
     pub error: String,
     pub message: String,
+    #[serde(skip)]
+    pub status: Option<StatusCode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resource: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan: Option<String>,
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        let status = StatusCode::INTERNAL_SERVER_ERROR;
+        let status = self.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         (status, Json(self)).into_response()
+    }
+}
+
+impl ApiError {
+    pub fn internal(error: &str, message: String) -> Self {
+        Self {
+            error: error.to_string(),
+            message,
+            status: None,
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
+        }
+    }
+
+    pub fn limit_reached(resource: &str, current: i64, limit: i64, plan: &str) -> Self {
+        Self {
+            error: "limit_reached".to_string(),
+            message: format!(
+                "You have reached your {} limit ({}/{}) on the {} plan. Upgrade to increase your limits.",
+                resource, current, limit, plan
+            ),
+            status: Some(StatusCode::TOO_MANY_REQUESTS),
+            resource: Some(resource.to_string()),
+            current: Some(current),
+            limit: Some(limit),
+            plan: Some(plan.to_string()),
+        }
+    }
+
+    pub fn upgrade_required(feature: &str, plan: &str) -> Self {
+        Self {
+            error: "upgrade_required".to_string(),
+            message: format!(
+                "The {} feature is not available on the {} plan. Please upgrade.",
+                feature, plan
+            ),
+            status: Some(StatusCode::FORBIDDEN),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: Some(plan.to_string()),
+        }
     }
 }
 
@@ -124,11 +178,18 @@ pub async fn create_integration(
     Json(req): Json<CreateIntegrationRequest>,
 ) -> Result<(StatusCode, Json<IntegrationResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let limits = &tenant.plan_limits;
 
-    let definition = serde_json::to_value(&req.definition).map_err(|e| ApiError {
-        error: "invalid_definition".to_string(),
-        message: e.to_string(),
-    })?;
+    // Check integration count limit
+    if !limits.is_unlimited(limits.max_integrations) {
+        let count = state.storage.count_integrations(&tenant_id).await
+            .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+        if count >= limits.max_integrations {
+            return Err(ApiError::limit_reached("integrations", count, limits.max_integrations, &tenant.plan_name));
+        }
+    }
+
+    let definition = serde_json::to_value(&req.definition).map_err(|e| ApiError::internal("invalid_definition", e.to_string()))?;
 
     let row = state
         .storage
@@ -200,6 +261,16 @@ pub async fn run_integration(
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<RunResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let limits = &tenant.plan_limits;
+
+    // Check monthly run limit
+    if !limits.is_unlimited(limits.max_runs_per_month) {
+        let count = state.storage.count_monthly_runs(&tenant_id).await
+            .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+        if count >= limits.max_runs_per_month {
+            return Err(ApiError::limit_reached("runs_per_month", count, limits.max_runs_per_month, &tenant.plan_name));
+        }
+    }
 
     // Get the integration
     let integration = state
