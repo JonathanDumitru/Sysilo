@@ -1,159 +1,54 @@
-# External Integrations
+# Sysilo External Integrations
 
-**Analysis Date:** 2026-02-28
+Analysis scope: concrete integrations and integration-ready scaffolding in `/Users/dev/Documents/Software/Web/Sysilo`.
 
-## APIs & External Services
+## 1) AI provider integrations
+- OpenAI SDK integration in AI service (`services/ai-service/pyproject.toml`, `services/ai-service/src/ai_service/llm/clients.py`).
+- Anthropic SDK integration in AI service (`services/ai-service/pyproject.toml`, `services/ai-service/src/ai_service/llm/clients.py`).
+- Runtime keys/config come from env-backed settings (`services/ai-service/src/ai_service/config.py`).
+- Embeddings are explicitly OpenAI-backed (`services/ai-service/src/ai_service/llm/clients.py`).
 
-**AI / LLM Providers:**
-- OpenAI - Chat completions (GPT-4 Turbo) and embeddings (`text-embedding-3-small`)
-  - SDK/Client: `openai>=1.10.0` (`services/ai-service/src/ai_service/llm/clients.py`)
-  - Auth: `OPENAI_API_KEY` env var
-  - Default model: `gpt-4-turbo-preview`; configurable via `DEFAULT_MODEL` env var
-- Anthropic - Claude 3 Sonnet for chat completions (fallback/alternative provider)
-  - SDK/Client: `anthropic>=0.18.0` (`services/ai-service/src/ai_service/llm/clients.py`)
-  - Auth: `ANTHROPIC_API_KEY` env var
-  - Note: Embeddings not supported; always falls back to OpenAI for embeddings
+## 2) Billing integration
+- Stripe integration points are defined in API Gateway billing handlers (`services/api-gateway/internal/handlers/billing_handlers.go`).
+- Uses `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` configuration (`services/api-gateway/internal/handlers/billing_handlers.go`).
+- Webhook event handling is implemented for core subscription/invoice events (`services/api-gateway/internal/handlers/billing_handlers.go`).
+- Current status is partial/scaffolded: checkout/portal include "integration pending" behavior when key is unset (`services/api-gateway/internal/handlers/billing_handlers.go`).
 
-**Billing:**
-- Stripe - Subscription billing, checkout sessions, customer portal
-  - SDK/Client: Direct HTTP calls to Stripe API (no Stripe Go SDK; raw `net/http` in `services/api-gateway/internal/handlers/billing_handlers.go`)
-  - Auth: `STRIPE_SECRET_KEY` env var
-  - Webhook secret: `STRIPE_WEBHOOK_SECRET` env var
-  - Webhook events handled: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`
-  - Note: Stripe API calls are stubbed in dev mode when `STRIPE_SECRET_KEY` is empty
+## 3) Databases and state systems
+- PostgreSQL integrated across Go/Rust/Python services (`services/api-gateway/internal/config/config.go`, `services/integration-service/src/config/mod.rs`, `services/ai-service/src/ai_service/config.py`).
+- Neo4j integrated in asset-service and configured in AI service settings (`services/asset-service/src/main.rs`, `services/asset-service/Cargo.toml`, `services/ai-service/src/ai_service/config.py`).
+- Redis integrated in API gateway and AI service (`services/api-gateway/go.mod`, `services/ai-service/pyproject.toml`).
+- Local infra dependencies are provisioned via compose (`infra/docker/docker-compose.yml`).
 
-## Data Storage
+## 4) Event streaming and async integration
+- Kafka integration in agent-gateway (Sarama) for task result/log forwarding (`services/agent-gateway/go.mod`, `services/agent-gateway/internal/kafka/consumer.go`, `services/agent-gateway/internal/kafka/producer.go`).
+- Kafka integration in Rust services via `rdkafka` (`services/integration-service/Cargo.toml`, `services/data-service/Cargo.toml`, `services/governance-service/Cargo.toml`).
+- Topic and broker config are env-driven (`services/integration-service/src/config/mod.rs`, `services/agent-gateway/internal/config/config.go`).
 
-**Databases:**
-- PostgreSQL 16 - Primary relational database for all services
-  - Connection: Go services use DSN `host/port/user/password/dbname/sslmode` from YAML + env overrides (`SYSILO_DB_*`)
-  - Python AI service: `DATABASE_URL` env var (`postgresql+asyncpg://...`)
-  - Client (Go): `database/sql` with `lib/pq` driver
-  - Client (Rust): `sqlx 0.7` with async postgres feature
-  - Client (Python): `SQLAlchemy 2.0` + `asyncpg 0.29`
-  - Schemas: 9 migration files in `schemas/postgres/` (001_initial through 009_billing)
-  - Extensions used: `uuid-ossp`, `pgcrypto`
+## 5) Agent/protocol integration surface
+- gRPC service contract for remote agents is defined in protobuf (`proto/agent/v1/agent.proto`).
+- Agent gateway implements stream handling for registration, heartbeat, task/result/log exchange (`services/agent-gateway/internal/tunnel/server.go`).
+- Agent runtime consumes gateway contract via shared proto module (`agent/go.mod`, `agent/internal/tunnel/client.go`).
 
-- Neo4j 5 Community - Graph database for technology asset relationships
-  - Connection: Bolt protocol on port 7687; env vars `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
-  - Client (Rust): `neo4rs 0.7` in `services/asset-service/`
-  - Client (Python): `neo4j>=5.15.0` in `services/ai-service/`
-  - Schema: `schemas/neo4j/001_constraints.cypher`
-  - Used by: asset-service (graph traversal, impact analysis, relationship management) and ai-service (context for AI recommendations)
-  - Docker: `neo4j:5-community` with APOC plugin enabled
+## 6) Outbound notification integrations (Operations service)
+- Supported notification channels include Slack, Webhook, PagerDuty, Teams, Email/OpsGenie enum entries (`services/ops-service/src/notifications/mod.rs`).
+- Slack and Teams use incoming webhook URLs (`services/ops-service/src/notifications/mod.rs`).
+- PagerDuty targets Events API v2 enqueue endpoint (`services/ops-service/src/notifications/mod.rs`).
+- Generic webhook posts JSON payloads to arbitrary URLs (`services/ops-service/src/notifications/mod.rs`).
+- Email path is currently placeholder/stub despite `lettre` dependency (`services/ops-service/src/notifications/mod.rs`, `services/ops-service/Cargo.toml`).
+- OpsGenie appears declared but not implemented in dispatch match paths (`services/ops-service/src/notifications/mod.rs`).
 
-**Message Streaming:**
-- Apache Kafka (Confluent Platform 7.5.0) - Event streaming between services
-  - Connection: `localhost:9092` (external), `kafka:29092` (internal Docker)
-  - Zookeeper: required (Confluent cp-zookeeper:7.5.0)
-  - Client (Go agent-gateway): `IBM/sarama v1.42`
-  - Client (Rust services): `rdkafka 0.36`
-  - Used by: agent-gateway (task dispatch to agents), integration-service (task results), data-service (streaming ingestion), governance-service (policy events)
-  - Dev tooling: `provectuslabs/kafka-ui` on port 8080
+## 7) Storage and connector-adjacent integrations
+- MinIO/S3-compatible object storage is provisioned in infra (`infra/docker/docker-compose.yml`).
+- UI and docs expose S3/Salesforce/Snowflake/MySQL/PostgreSQL/AWS/Azure as connector targets/sources (`packages/frontend/web-app/src/components/studio/NodeToolbox.tsx`, `services/integration-service/src/api/mod.rs`, `docs/integration/integration-studio.md`).
+- `connectors/` has no active connector source files checked in at present; practical implementation entrypoints are the TypeScript SDK and integration service APIs (`packages/sdk/typescript/src/index.ts`, `services/integration-service/src/connections/api.rs`).
 
-**File Storage:**
-- MinIO (S3-compatible) - Object storage for binary/file data
-  - API port: 9000; Console port: 9001
-  - Docker: `minio/minio:latest`
-  - Auth env vars: `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`
-  - Note: No application-level S3/MinIO SDK found yet; infra is provisioned but client integration may be pending
+## 8) Auth/integration security context
+- API gateway uses JWT-based auth middleware and configurable secret/issuer (`services/api-gateway/internal/middleware/middleware.go`, `services/api-gateway/internal/config/config.go`).
+- Multi-tenant context is propagated through tenant-aware handlers and middleware (`services/api-gateway/internal/middleware/middleware.go`, `services/api-gateway/internal/handlers/handlers.go`).
+- Agent gateway notes mTLS-oriented authorization model as production intent (`services/agent-gateway/internal/tunnel/server.go`).
 
-**Caching:**
-- Redis 7 - Caching and rate limiting
-  - Connection (Go): `redis/go-redis v9.4` in `services/api-gateway/`; env `SYSILO_REDIS_ADDRESS`, `SYSILO_REDIS_PASSWORD`
-  - Connection (Python): `redis>=5.0.0` in `services/ai-service/`; env `REDIS_URL`
-  - Used for: response caching in AI service (TTL 300s), rate-limit enforcement in API gateway (TODO: not fully implemented yet)
-
-## Authentication & Identity
-
-**Auth Provider:**
-- Custom JWT - Self-managed authentication; no external identity provider
-  - Implementation: HMAC-signed JWTs validated in `services/api-gateway/internal/middleware/middleware.go`
-  - Library: `golang-jwt/jwt v5` in api-gateway
-  - JWT secret: `SYSILO_JWT_SECRET` env var
-  - Token claims: `sub` (user ID), `tenant_id`, `roles` (array)
-  - Token expiry: configurable, default 60 minutes
-  - Multi-tenancy: tenant isolation enforced via `X-Tenant-ID` context header
-
-## Monitoring & Observability
-
-**Error Tracking:**
-- Not detected - No Sentry, Datadog, or similar SDK integrated
-
-**Logging:**
-- Go services: `go.uber.org/zap v1.26` structured JSON logging
-- Rust services: `tracing 0.1` + `tracing-subscriber 0.3` with JSON format and env-filter
-- Python AI service: `structlog>=24.1` + `python-json-logger>=2.0`
-- All services emit structured JSON logs; format controlled by `LOG_LEVEL` / `SYSILO_LOG_LEVEL`
-
-**Metrics/Tracing:**
-- Not detected at instrumentation level - no OpenTelemetry, Prometheus, or Jaeger SDKs found
-
-## CI/CD & Deployment
-
-**Hosting:**
-- No cloud provider locked in; `infra/terraform/` and `infra/kubernetes/` directories exist but are empty
-
-**CI Pipeline:**
-- Not detected - `.github/workflows/` directory is empty
-
-**Build System:**
-- GNU Make (`Makefile`) orchestrates all build, test, lint, and proto generation tasks
-- Key targets: `dev-up`, `build`, `test`, `lint`, `proto`, `db-migrate`
-
-## Webhooks & Callbacks
-
-**Incoming:**
-- Stripe Webhooks: `POST /webhooks/stripe` (handled in `services/api-gateway/internal/handlers/billing_handlers.go`)
-  - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`
-  - Signature verification via `STRIPE_WEBHOOK_SECRET` (stubbed - `TODO` comment in code)
-
-**Outgoing (Notification Channels):**
-- Slack: Incoming webhook URL (configured per channel); sends attachment-style messages (`services/ops-service/src/notifications/mod.rs`)
-- Microsoft Teams: Incoming webhook URL; sends MessageCard format
-- PagerDuty: Events API v2 at `https://events.pagerduty.com/v2/enqueue`; uses routing key
-- Generic Webhook: Arbitrary HTTP POST endpoint with JSON payload
-- Email: `lettre 0.11` (`tokio1-native-tls` feature) in ops-service; implementation is a placeholder stub
-- OpsGenie: Channel type defined in enum but no implementation found
-
-## Internal Service Communication
-
-**gRPC (bidirectional streaming):**
-- Agent ↔ Agent-Gateway: `proto/agent/v1/agent.proto` defines `AgentService`
-  - `rpc Connect(stream AgentMessage) returns (stream GatewayMessage)` - persistent bidirectional stream
-  - `rpc ReportTaskResult(TaskResult) returns (TaskResultAck)` - unary result reporting
-  - Task types: `QUERY`, `API_CALL`, `FILE_TRANSFER`, `DISCOVERY`, `HEALTH_CHECK`
-
-**HTTP (internal REST):**
-- Frontend → API Gateway: proxied via Vite dev server (`/api` → `http://localhost:8081`); production URL via `VITE_API_URL` env var
-- API Gateway → Integration Service: `SYSILO_INTEGRATION_SERVICE_ADDRESS` env var (default `localhost:8085`)
-- API Gateway → Agent Gateway: `SYSILO_AGENT_GATEWAY_ADDRESS` env var (default `localhost:8082`)
-- Rationalization Service → AI Service: HTTP calls for AI analysis (`reqwest 0.11`)
-- Integration Service → Asset Service: Kafka consumer posts results to asset-service URL (configured via `consumer.asset_service_url`)
-
-## Environment Configuration
-
-**Required env vars by service:**
-
-api-gateway:
-- `SYSILO_JWT_SECRET` - JWT signing secret
-- `SYSILO_DB_HOST`, `SYSILO_DB_PORT`, `SYSILO_DB_USER`, `SYSILO_DB_PASSWORD`, `SYSILO_DB_NAME`
-- `SYSILO_REDIS_ADDRESS`
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (optional; billing disabled if absent)
-
-agent:
-- `SYSILO_AGENT_ID` - Unique agent identifier
-- `SYSILO_TENANT_ID` - Tenant this agent belongs to
-- `SYSILO_GATEWAY_ADDRESS` - gRPC gateway address
-
-ai-service:
-- `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` (at least one required)
-- `DATABASE_URL`, `REDIS_URL`, `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
-
-**Secrets location:**
-- `.env` file (gitignored) for local development
-- YAML config files in `config/` directory (gitignored) for service-level config
-
----
-
-*Integration audit: 2026-02-28*
+## 9) Practical integration status summary
+- Fully wired integrations: PostgreSQL, Neo4j, Redis, Kafka, OpenAI/Anthropic clients, gRPC agent protocol.
+- Partially wired/scaffolded integrations: Stripe checkout/portal execution, notification email/OpsGenie, S3/connector runtime implementations.
+- Local developer integration environment is consistently documented and runnable through compose + make (`Makefile`, `infra/docker/docker-compose.yml`, `docs/development/configuration.md`).
