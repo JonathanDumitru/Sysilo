@@ -75,33 +75,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INVT-01 | TBD | Pending |
-| INVT-02 | TBD | Pending |
-| INVT-03 | TBD | Pending |
-| INVT-04 | TBD | Pending |
-| HEAL-01 | TBD | Pending |
-| HEAL-02 | TBD | Pending |
-| HEAL-03 | TBD | Pending |
-| HEAL-04 | TBD | Pending |
-| GOV-01 | TBD | Pending |
-| GOV-02 | TBD | Pending |
-| GOV-03 | TBD | Pending |
-| GOV-04 | TBD | Pending |
-| GOV-05 | TBD | Pending |
-| AICO-01 | TBD | Pending |
-| AICO-02 | TBD | Pending |
-| AICO-03 | TBD | Pending |
-| AICO-04 | TBD | Pending |
-| AICO-05 | TBD | Pending |
-| PLAT-01 | TBD | Pending |
-| PLAT-02 | TBD | Pending |
-| PLAT-03 | TBD | Pending |
+| INVT-01 | Phase 1 | Pending |
+| INVT-02 | Phase 2 | Pending |
+| INVT-03 | Phase 2 | Pending |
+| INVT-04 | Phase 2 | Pending |
+| HEAL-01 | Phase 3 | Pending |
+| HEAL-02 | Phase 3 | Pending |
+| HEAL-03 | Phase 3 | Pending |
+| HEAL-04 | Phase 3 | Pending |
+| GOV-01 | Phase 2 | Pending |
+| GOV-02 | Phase 1 | Pending |
+| GOV-03 | Phase 1 | Pending |
+| GOV-04 | Phase 4 | Pending |
+| GOV-05 | Phase 4 | Pending |
+| AICO-01 | Phase 5 | Pending |
+| AICO-02 | Phase 5 | Pending |
+| AICO-03 | Phase 5 | Pending |
+| AICO-04 | Phase 5 | Pending |
+| AICO-05 | Phase 5 | Pending |
+| PLAT-01 | Phase 1 | Pending |
+| PLAT-02 | Phase 1 | Pending |
+| PLAT-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 after roadmap creation*
