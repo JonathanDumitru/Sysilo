@@ -25,6 +25,11 @@ var (
 	buildDate = "unknown"
 )
 
+const (
+	apiV1RoutePrefix       = "/api/v1"
+	connectionsRoutePrefix = "/connections"
+)
+
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "Path to configuration file")
@@ -95,13 +100,13 @@ func main() {
 	}
 
 	// Stripe webhook (no auth — Stripe signs with its own secret)
-	r.Post("/api/v1/billing/webhooks", h.HandleStripeWebhook)
+	r.Post(apiV1RoutePrefix+"/billing/webhooks", h.HandleStripeWebhook)
 
 	// Public plan listing (no auth needed for pricing page)
-	r.Get("/api/v1/plans", h.ListPlans)
+	r.Get(apiV1RoutePrefix+"/plans", h.ListPlans)
 
 	// Public auth flows
-	r.Route("/api/v1/auth", func(r chi.Router) {
+	r.Route(apiV1RoutePrefix+"/auth", func(r chi.Router) {
 		r.Get("/sso/start", h.StartSSO)
 		r.Get("/sso/callback", h.HandleSSOCallback)
 		r.Post("/breakglass/start", h.StartBreakglassLogin)
@@ -110,7 +115,7 @@ func main() {
 	})
 
 	// SCIM provisioning routes (SCIM token + admin scope required)
-	r.Route("/api/v1/scim", func(r chi.Router) {
+	r.Route(apiV1RoutePrefix+"/scim", func(r chi.Router) {
 		r.Use(middleware.RequireSCIMToken(logger, cfg.Auth))
 		r.Use(middleware.RequireSCIMAdminScope())
 		r.Route("/users", func(r chi.Router) {
@@ -121,7 +126,7 @@ func main() {
 	})
 
 	// API routes (auth required)
-	r.Route("/api/v1", func(r chi.Router) {
+	r.Route(apiV1RoutePrefix, func(r chi.Router) {
 		// Auth middleware
 		r.Use(middleware.Auth(logger, cfg.Auth))
 
@@ -154,7 +159,7 @@ func main() {
 		})
 
 		// Connections
-		r.Route("/connections", func(r chi.Router) {
+		r.Route(connectionsRoutePrefix, func(r chi.Router) {
 			r.Get("/", h.ListConnections)
 			r.Post("/", h.CreateConnection)
 			r.Get("/{connectionID}", h.GetConnection)

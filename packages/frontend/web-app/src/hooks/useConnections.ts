@@ -11,9 +11,11 @@ import {
   type UpdateConnectionRequest,
 } from '../services/connections';
 
+const CONNECTIONS_QUERY_KEY = ['connections'] as const;
+
 export function useConnections() {
   return useQuery({
-    queryKey: ['connections'],
+    queryKey: CONNECTIONS_QUERY_KEY,
     queryFn: listConnections,
     staleTime: 30_000,
   });
@@ -25,7 +27,7 @@ export function useCreateConnection() {
   return useMutation({
     mutationFn: (request: CreateConnectionRequest) => createConnection(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
+      queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY });
     },
   });
 }
@@ -37,7 +39,7 @@ export function useUpdateConnection() {
     mutationFn: ({ id, request }: { id: string; request: UpdateConnectionRequest }) =>
       updateConnection(id, request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
+      queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY });
     },
   });
 }
@@ -46,9 +48,9 @@ export function useDeleteConnection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deleteConnection(id),
+    mutationFn: deleteConnection,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
+      queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY });
     },
   });
 }
@@ -57,9 +59,9 @@ export function useTestConnection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => testConnection(id),
+    mutationFn: testConnection,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
+      queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY });
     },
   });
 }
@@ -70,7 +72,7 @@ export function useActivateConnection() {
   return useMutation({
     mutationFn: (connection: Connection) => activateConnection(connection),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['connections'] });
+      queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY });
     },
   });
 }

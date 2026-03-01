@@ -1,6 +1,5 @@
-import { apiFetch } from './api';
-
-const DEV_TENANT_ID = 'dev-tenant';
+import { getAuthContextHeaders } from '../config/env';
+import { apiClient, GATEWAY_CONNECTIONS_BASE_PATH } from './api';
 
 export type ConnectorType = 'postgresql' | 'mysql' | 'snowflake' | 'oracle' | 'salesforce' | 'rest_api';
 export type AuthType = 'credential' | 'oauth' | 'api_key';
@@ -42,33 +41,33 @@ export interface UpdateConnectionRequest {
   desired_status?: 'active';
 }
 
-const tenantHeaders = { 'X-Tenant-ID': DEV_TENANT_ID };
+const connectionHeaders = getAuthContextHeaders();
 
 export async function listConnections(): Promise<Connection[]> {
-  const resp = await apiFetch<ConnectionListResponse>('/connections', {
-    headers: tenantHeaders,
+  const resp = await apiClient.request<ConnectionListResponse>(GATEWAY_CONNECTIONS_BASE_PATH, {
+    headers: connectionHeaders,
   });
   return resp.connections;
 }
 
 export async function getConnection(id: string): Promise<Connection> {
-  return apiFetch<Connection>(`/connections/${id}`, {
-    headers: tenantHeaders,
+  return apiClient.request<Connection>(`${GATEWAY_CONNECTIONS_BASE_PATH}/${id}`, {
+    headers: connectionHeaders,
   });
 }
 
 export async function createConnection(request: CreateConnectionRequest): Promise<Connection> {
-  return apiFetch<Connection>('/connections', {
+  return apiClient.request<Connection>(GATEWAY_CONNECTIONS_BASE_PATH, {
     method: 'POST',
-    headers: tenantHeaders,
+    headers: connectionHeaders,
     body: JSON.stringify(request),
   });
 }
 
 export async function updateConnection(id: string, request: UpdateConnectionRequest): Promise<Connection> {
-  return apiFetch<Connection>(`/connections/${id}`, {
+  return apiClient.request<Connection>(`${GATEWAY_CONNECTIONS_BASE_PATH}/${id}`, {
     method: 'PUT',
-    headers: tenantHeaders,
+    headers: connectionHeaders,
     body: JSON.stringify(request),
   });
 }
@@ -82,16 +81,16 @@ export async function activateConnection(connection: Connection): Promise<Connec
 }
 
 export async function deleteConnection(id: string): Promise<void> {
-  await apiFetch(`/connections/${id}`, {
+  await apiClient.request(`${GATEWAY_CONNECTIONS_BASE_PATH}/${id}`, {
     method: 'DELETE',
-    headers: tenantHeaders,
+    headers: connectionHeaders,
   });
 }
 
 export async function testConnection(id: string): Promise<Connection> {
-  return apiFetch<Connection>(`/connections/${id}/test`, {
+  return apiClient.request<Connection>(`${GATEWAY_CONNECTIONS_BASE_PATH}/${id}/test`, {
     method: 'POST',
-    headers: tenantHeaders,
+    headers: connectionHeaders,
   });
 }
 
