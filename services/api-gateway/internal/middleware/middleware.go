@@ -2,12 +2,18 @@ package middleware
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
+	_ "github.com/lib/pq"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/config"
 	"go.uber.org/zap"
 )
@@ -19,6 +25,12 @@ const (
 	ContextKeyTenantID contextKey = "tenant_id"
 	ContextKeyUserID   contextKey = "user_id"
 	ContextKeyRoles    contextKey = "roles"
+)
+
+var (
+	authProfileDB     *sql.DB
+	authProfileDBErr  error
+	authProfileDBOnce sync.Once
 )
 
 // Logger returns a middleware that logs requests
@@ -127,10 +139,37 @@ func Auth(logger *zap.Logger, cfg config.AuthConfig) func(next http.Handler) htt
 				http.Error(w, "invalid token claims", http.StatusUnauthorized)
 				return
 			}
+			tokenType, _ := claims["token_type"].(string)
+			if tokenType != "access" {
+				http.Error(w, "invalid token type", http.StatusUnauthorized)
+				return
+			}
 
 			// Extract user info from claims
 			userID, _ := claims["sub"].(string)
 			tenantID, _ := claims["tenant_id"].(string)
+			status, _ := claims["status"].(string)
+			sessionVersion, err := intClaim(claims["session_version"])
+			if err != nil {
+				http.Error(w, "invalid token claims", http.StatusUnauthorized)
+				return
+			}
+			if userID == "" || tenantID == "" || status != "active" {
+				http.Error(w, "invalid token claims", http.StatusUnauthorized)
+				return
+			}
+
+			profile, err := loadAuthProfile(r.Context(), tenantID, userID)
+			if err != nil {
+				logger.Warn("Failed to load request-time auth profile", zap.Error(err))
+				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+			if profile == nil || profile.Status != "active" || profile.SessionVersion != sessionVersion {
+				http.Error(w, "session is no longer valid", http.StatusUnauthorized)
+				return
+			}
+
 			roles, _ := claims["roles"].([]interface{})
 
 			// Convert roles to string slice
@@ -149,6 +188,92 @@ func Auth(logger *zap.Logger, cfg config.AuthConfig) func(next http.Handler) htt
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
+	}
+}
+
+type authProfile struct {
+	Status         string
+	SessionVersion int
+}
+
+func loadAuthProfile(ctx context.Context, tenantID, userID string) (*authProfile, error) {
+	db, err := authProfileConn()
+	if err != nil {
+		return nil, err
+	}
+
+	var profile authProfile
+	err = db.QueryRowContext(ctx, `
+		SELECT status, session_version
+		FROM users
+		WHERE tenant_id = $1 AND id = $2
+	`, tenantID, userID).Scan(&profile.Status, &profile.SessionVersion)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+func authProfileConn() (*sql.DB, error) {
+	authProfileDBOnce.Do(func() {
+		host := envOrDefault("SYSILO_DB_HOST", "localhost")
+		port := envOrDefault("SYSILO_DB_PORT", "5432")
+		user := envOrDefault("SYSILO_DB_USER", "sysilo")
+		password := envOrDefault("SYSILO_DB_PASSWORD", "sysilo")
+		database := envOrDefault("SYSILO_DB_NAME", "sysilo")
+		sslMode := envOrDefault("SYSILO_DB_SSLMODE", "disable")
+
+		dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			host, port, user, password, database, sslMode,
+		)
+		conn, err := sql.Open("postgres", dsn)
+		if err != nil {
+			authProfileDBErr = err
+			return
+		}
+		conn.SetMaxOpenConns(4)
+		conn.SetMaxIdleConns(2)
+		conn.SetConnMaxLifetime(2 * time.Minute)
+		if err := conn.Ping(); err != nil {
+			authProfileDBErr = err
+			conn.Close()
+			return
+		}
+		authProfileDB = conn
+	})
+	if authProfileDBErr != nil {
+		return nil, authProfileDBErr
+	}
+	if authProfileDB == nil {
+		return nil, fmt.Errorf("auth profile connection not initialized")
+	}
+	return authProfileDB, nil
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func intClaim(v interface{}) (int, error) {
+	switch value := v.(type) {
+	case float64:
+		return int(value), nil
+	case int:
+		return value, nil
+	case string:
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return 0, err
+		}
+		return n, nil
+	default:
+		return 0, fmt.Errorf("invalid integer claim")
 	}
 }
 

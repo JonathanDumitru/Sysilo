@@ -154,27 +154,53 @@ func (r *IntegrationRun) Normalize() {
 
 // User represents a user in the database
 type User struct {
-	ID            string         `json:"id"`
-	TenantID      string         `json:"tenant_id"`
-	Email         string         `json:"email"`
-	Name          sql.NullString `json:"-"`
-	NameStr       string         `json:"name,omitempty"`
-	PasswordHash  sql.NullString `json:"-"` // Never expose
-	Roles         []string       `json:"roles"`
-	Status        string         `json:"status"`
-	LastLoginAt   sql.NullTime   `json:"-"`
-	LastLogin     *time.Time     `json:"last_login_at,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID                   string         `json:"id"`
+	TenantID             string         `json:"tenant_id"`
+	Email                string         `json:"email"`
+	Name                 sql.NullString `json:"-"`
+	NameStr              string         `json:"name,omitempty"`
+	PasswordHash         sql.NullString `json:"-"` // Never expose
+	Roles                []string       `json:"roles"`
+	Status               string         `json:"status"`
+	AuthSource           string         `json:"auth_source"`
+	IDPSubject           sql.NullString `json:"-"`
+	IDPSubjectStr        string         `json:"idp_subject,omitempty"`
+	SessionVersion       int            `json:"session_version"`
+	BreakglassEligible   bool           `json:"breakglass_eligible"`
+	LastLoginAt          sql.NullTime   `json:"-"`
+	LastLogin            *time.Time     `json:"last_login_at,omitempty"`
+	LastBreakglassLogin  sql.NullTime   `json:"-"`
+	LastBreakglassLoginT *time.Time     `json:"last_breakglass_login_at,omitempty"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
 func (u *User) Normalize() {
 	if u.Name.Valid {
 		u.NameStr = u.Name.String
 	}
+	if u.IDPSubject.Valid {
+		u.IDPSubjectStr = u.IDPSubject.String
+	}
 	if u.LastLoginAt.Valid {
 		u.LastLogin = &u.LastLoginAt.Time
 	}
+	if u.LastBreakglassLogin.Valid {
+		u.LastBreakglassLoginT = &u.LastBreakglassLogin.Time
+	}
+}
+
+// RefreshToken stores metadata for refresh-token rotation and revocation.
+type RefreshToken struct {
+	ID             string       `json:"id"`
+	TenantID       string       `json:"tenant_id"`
+	UserID         string       `json:"user_id"`
+	TokenHash      string       `json:"-"`
+	ReplacedByHash sql.NullString `json:"-"`
+	ExpiresAt      time.Time    `json:"expires_at"`
+	RevokedAt      sql.NullTime `json:"-"`
+	UsedAt         sql.NullTime `json:"-"`
+	CreatedAt      time.Time    `json:"created_at"`
 }
 
 // Task represents a task in the database
