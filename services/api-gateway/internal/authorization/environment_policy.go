@@ -81,6 +81,19 @@ func IsAllowed(roles []string, environment Environment, action Action) bool {
 	return false
 }
 
+// Allow requires both environment RBAC and team-scoped entitlement.
+func Allow(roles []string, environment Environment, action Action, teamID string) bool {
+	if !IsAllowed(roles, environment, action) {
+		return false
+	}
+	return IsTeamAllowed(roles, teamID, action)
+}
+
+// Authorize is an alias for Allow.
+func Authorize(roles []string, environment Environment, action Action, teamID string) bool {
+	return Allow(roles, environment, action, teamID)
+}
+
 type roleBinding struct {
 	Role        string
 	Environment Environment

@@ -28,6 +28,7 @@ const (
 	ContextKeyUserID   contextKey = "user_id"
 	ContextKeyRoles    contextKey = "roles"
 	ContextKeyEnv      contextKey = "environment"
+	ContextKeyTeamID   contextKey = "team_id"
 	ContextKeySCIMScopes contextKey = "scim_scopes"
 )
 
@@ -85,6 +86,7 @@ func CORS(cfg config.CORSConfig) func(next http.Handler) http.Handler {
 			}
 
 			allowedHeaders := ensureHeader(cfg.AllowedHeaders, "X-Environment")
+			allowedHeaders = ensureHeader(allowedHeaders, "X-Team-ID")
 			w.Header().Set("Access-Control-Allow-Methods", strings.Join(cfg.AllowedMethods, ", "))
 			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 
@@ -305,8 +307,14 @@ func TenantContext(logger *zap.Logger) func(next http.Handler) http.Handler {
 				http.Error(w, "valid environment context required", http.StatusBadRequest)
 				return
 			}
+			rawTeamID := normalizeTeamID(r.Header.Get("X-Team-ID"))
+			if !isValidTeamID(rawTeamID) {
+				http.Error(w, "valid team context required", http.StatusBadRequest)
+				return
+			}
 
 			ctx := context.WithValue(r.Context(), ContextKeyEnv, string(environment))
+			ctx = context.WithValue(ctx, ContextKeyTeamID, rawTeamID)
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
@@ -328,12 +336,17 @@ func RequireRole(requiredRoles ...string) func(next http.Handler) http.Handler {
 				http.Error(w, "valid environment context required", http.StatusBadRequest)
 				return
 			}
+			teamID := GetTeamID(r.Context())
+			if teamID == "" {
+				http.Error(w, "valid team context required", http.StatusBadRequest)
+				return
+			}
 
 			// Check if user has any of the required roles
 			hasRole := false
 			for _, required := range requiredRoles {
 				for _, role := range roles {
-					if role == required {
+					if roleMatchesRequired(role, required) {
 						hasRole = true
 						break
 					}
@@ -348,8 +361,12 @@ func RequireRole(requiredRoles ...string) func(next http.Handler) http.Handler {
 				return
 			}
 			action := actionForRequest(r)
-			parsedEnvironment, _ := authorization.ParseEnvironment(environment)
-			if !authorization.IsAllowed(roles, parsedEnvironment, action) {
+			parsedEnvironment, ok := authorization.ParseEnvironment(environment)
+			if !ok {
+				http.Error(w, "valid environment context required", http.StatusBadRequest)
+				return
+			}
+			if !authorization.Authorize(roles, parsedEnvironment, action, teamID) {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -442,6 +459,14 @@ func GetEnvironment(ctx context.Context) string {
 	return ""
 }
 
+// GetTeamID extracts team ID from request context.
+func GetTeamID(ctx context.Context) string {
+	if v := ctx.Value(ContextKeyTeamID); v != nil {
+		return v.(string)
+	}
+	return ""
+}
+
 func actionForRequest(r *http.Request) authorization.Action {
 	if strings.HasPrefix(r.URL.Path, "/api/admin") || strings.Contains(r.URL.Path, "/admin/") {
 		return authorization.ActionAdmin
@@ -461,6 +486,34 @@ func ensureHeader(headers []string, required string) []string {
 		}
 	}
 	return append(headers, required)
+}
+
+func normalizeTeamID(raw string) string {
+	return strings.ToLower(strings.TrimSpace(raw))
+}
+
+func isValidTeamID(raw string) bool {
+	if raw == "" || len(raw) > 64 {
+		return false
+	}
+	for _, r := range raw {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func roleMatchesRequired(role, required string) bool {
+	role = strings.ToLower(strings.TrimSpace(role))
+	required = strings.ToLower(strings.TrimSpace(required))
+	if role == required {
+		return true
+	}
+	return strings.HasSuffix(role, ":"+required) ||
+		strings.HasPrefix(role, required+"#") ||
+		strings.HasSuffix(role, "/"+required)
 }
 
 // RequireSCIMToken validates SCIM bearer credentials at the route boundary.

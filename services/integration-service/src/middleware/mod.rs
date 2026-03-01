@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 /// Headers used for passing tenant context from API Gateway
 const TENANT_ID_HEADER: &str = "x-tenant-id";
+const TEAM_ID_HEADER: &str = "x-team-id";
 const USER_ID_HEADER: &str = "x-user-id";
 const USER_ROLE_HEADER: &str = "x-user-role";
 const PLAN_NAME_HEADER: &str = "x-plan-name";
@@ -49,6 +50,7 @@ impl PlanLimits {
 #[derive(Debug, Clone)]
 pub struct TenantContext {
     pub tenant_id: Uuid,
+    pub team_id: Uuid,
     pub user_id: Option<Uuid>,
     pub user_role: Option<String>,
     pub environment: String,
@@ -79,6 +81,16 @@ pub fn extract_tenant_context(headers: &HeaderMap) -> Result<TenantContext, Tena
         .ok_or_else(|| TenantContextError {
             error: "missing_tenant_context".to_string(),
             message: format!("Missing or invalid {} header", TENANT_ID_HEADER),
+        })?;
+
+    // Extract team ID (required)
+    let team_id = headers
+        .get(TEAM_ID_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .ok_or_else(|| TenantContextError {
+            error: "missing_team_context".to_string(),
+            message: format!("Missing or invalid {} header", TEAM_ID_HEADER),
         })?;
 
     // Extract user ID (optional)
@@ -120,6 +132,7 @@ pub fn extract_tenant_context(headers: &HeaderMap) -> Result<TenantContext, Tena
 
     Ok(TenantContext {
         tenant_id,
+        team_id,
         user_id,
         user_role,
         environment,
@@ -149,22 +162,31 @@ pub async fn tenant_context_middleware(
     Ok(next.run(request).await)
 }
 
-/// For development/testing: middleware that uses a default tenant if not provided
-pub async fn optional_tenant_context_middleware(
-    mut request: Request<Body>,
-    next: Next,
-) -> Response {
-    let context = extract_tenant_context(request.headers()).unwrap_or_else(|_| {
-        // Default tenant for development (unlimited plan)
-        TenantContext {
-            tenant_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            user_id: None,
-            user_role: Some("admin".to_string()),
-            environment: "dev".to_string(),
-            plan_name: "enterprise".to_string(),
-            plan_limits: PlanLimits::default(),
-        }
-    });
-    request.extensions_mut().insert(context);
-    next.run(request).await
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_headers() -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(TENANT_ID_HEADER, "00000000-0000-0000-0000-000000000001".parse().unwrap());
+        headers.insert(TEAM_ID_HEADER, "00000000-0000-0000-0000-000000000010".parse().unwrap());
+        headers.insert(ENVIRONMENT_HEADER, "dev".parse().unwrap());
+        headers
+    }
+
+    #[test]
+    fn environment_context_requires_valid_environment() {
+        let mut headers = valid_headers();
+        headers.insert(ENVIRONMENT_HEADER, "qa".parse().unwrap());
+        let error = extract_tenant_context(&headers).unwrap_err();
+        assert_eq!(error.error, "missing_environment_context");
+    }
+
+    #[test]
+    fn environment_context_requires_team_header() {
+        let mut headers = valid_headers();
+        headers.remove(TEAM_ID_HEADER);
+        let error = extract_tenant_context(&headers).unwrap_err();
+        assert_eq!(error.error, "missing_team_context");
+    }
 }

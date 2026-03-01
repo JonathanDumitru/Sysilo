@@ -477,6 +477,7 @@ impl Storage {
     pub async fn list_connections(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
     ) -> Result<Vec<ConnectionRow>, StorageError> {
         let rows: Vec<ConnectionRow> = sqlx::query_as(
@@ -487,11 +488,13 @@ impl Storage {
                    created_at, updated_at
             FROM connections
             WHERE tenant_id = $1::uuid
-              AND config->>'_environment' = $2
+              AND config->>'_team_id' = $2
+              AND config->>'_environment' = $3
             ORDER BY created_at DESC
             "#,
         )
         .bind(tenant_id)
+        .bind(team_id)
         .bind(environment)
         .fetch_all(&self.pool)
         .await?;
@@ -503,6 +506,7 @@ impl Storage {
     pub async fn get_connection_in_environment(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
         connection_id: Uuid,
     ) -> Result<ConnectionRow, StorageError> {
@@ -514,11 +518,13 @@ impl Storage {
                    created_at, updated_at
             FROM connections
             WHERE tenant_id = $1::uuid
-              AND config->>'_environment' = $2
-              AND id = $3
+              AND config->>'_team_id' = $2
+              AND config->>'_environment' = $3
+              AND id = $4
             "#,
         )
         .bind(tenant_id)
+        .bind(team_id)
         .bind(environment)
         .bind(connection_id)
         .fetch_optional(&self.pool)
@@ -555,6 +561,7 @@ impl Storage {
     pub async fn create_connection(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
         name: &str,
         connector_type: &str,
@@ -565,7 +572,7 @@ impl Storage {
         let row: ConnectionRow = sqlx::query_as(
             r#"
             INSERT INTO connections (tenant_id, name, connector_type, auth_type, config, credentials)
-            VALUES ($1::uuid, $2, $3, $4, jsonb_set($5, '{_environment}', to_jsonb($6::text), true), $7)
+            VALUES ($1::uuid, $2, $3, $4, jsonb_set(jsonb_set($5, '{_environment}', to_jsonb($6::text), true), '{_team_id}', to_jsonb($7::text), true), $8)
             RETURNING id, tenant_id, name, connector_type, auth_type,
                       config, credentials, status,
                       last_tested_at, last_test_status, last_test_error,
@@ -578,6 +585,7 @@ impl Storage {
         .bind(auth_type)
         .bind(config)
         .bind(environment)
+        .bind(team_id)
         .bind(credentials)
         .fetch_one(&self.pool)
         .await?;
@@ -589,6 +597,7 @@ impl Storage {
     pub async fn update_connection(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
         connection_id: Uuid,
         name: &str,
@@ -599,11 +608,12 @@ impl Storage {
             sqlx::query_as(
                 r#"
                 UPDATE connections
-                SET name = $4,
-                    config = jsonb_set($5, '{_environment}', to_jsonb($3::text), true),
-                    credentials = $6, updated_at = NOW()
+                SET name = $5,
+                    config = jsonb_set(jsonb_set($6, '{_environment}', to_jsonb($4::text), true), '{_team_id}', to_jsonb($3::text), true),
+                    credentials = $7, updated_at = NOW()
                 WHERE tenant_id = $1::uuid
-                  AND config->>'_environment' = $3
+                  AND config->>'_team_id' = $3
+                  AND config->>'_environment' = $4
                   AND id = $2
                 RETURNING id, tenant_id, name, connector_type, auth_type,
                           config, credentials, status,
@@ -613,6 +623,7 @@ impl Storage {
             )
             .bind(tenant_id)
             .bind(connection_id)
+            .bind(team_id)
             .bind(environment)
             .bind(name)
             .bind(config)
@@ -623,11 +634,12 @@ impl Storage {
             sqlx::query_as(
                 r#"
                 UPDATE connections
-                SET name = $4,
-                    config = jsonb_set($5, '{_environment}', to_jsonb($3::text), true),
+                SET name = $5,
+                    config = jsonb_set(jsonb_set($6, '{_environment}', to_jsonb($4::text), true), '{_team_id}', to_jsonb($3::text), true),
                     updated_at = NOW()
                 WHERE tenant_id = $1::uuid
-                  AND config->>'_environment' = $3
+                  AND config->>'_team_id' = $3
+                  AND config->>'_environment' = $4
                   AND id = $2
                 RETURNING id, tenant_id, name, connector_type, auth_type,
                           config, credentials, status,
@@ -637,6 +649,7 @@ impl Storage {
             )
             .bind(tenant_id)
             .bind(connection_id)
+            .bind(team_id)
             .bind(environment)
             .bind(name)
             .bind(config)
@@ -651,6 +664,7 @@ impl Storage {
     pub async fn delete_connection(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
         connection_id: Uuid,
     ) -> Result<(), StorageError> {
@@ -658,11 +672,13 @@ impl Storage {
             r#"
             DELETE FROM connections
             WHERE tenant_id = $1::uuid
-              AND config->>'_environment' = $2
-              AND id = $3
+              AND config->>'_team_id' = $2
+              AND config->>'_environment' = $3
+              AND id = $4
             "#,
         )
         .bind(tenant_id)
+        .bind(team_id)
         .bind(environment)
         .bind(connection_id)
         .execute(&self.pool)
@@ -682,6 +698,7 @@ impl Storage {
     pub async fn update_connection_test_status(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
         connection_id: Uuid,
         status: &str,
@@ -696,7 +713,8 @@ impl Storage {
                 updated_at = NOW()
             WHERE id = $1
               AND tenant_id = $5::uuid
-              AND config->>'_environment' = $6
+              AND config->>'_team_id' = $6
+              AND config->>'_environment' = $7
             "#,
         )
         .bind(connection_id)
@@ -704,6 +722,7 @@ impl Storage {
         .bind(test_status)
         .bind(test_error)
         .bind(tenant_id)
+        .bind(team_id)
         .bind(environment)
         .execute(&self.pool)
         .await?;
@@ -880,12 +899,14 @@ impl Storage {
     pub async fn count_connections(
         &self,
         tenant_id: &str,
+        team_id: &str,
         environment: &str,
     ) -> Result<i64, StorageError> {
         let (count,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM connections WHERE tenant_id = $1 AND config->>'_environment' = $2",
+            "SELECT COUNT(*) FROM connections WHERE tenant_id = $1 AND config->>'_team_id' = $2 AND config->>'_environment' = $3",
         )
             .bind(tenant_id)
+            .bind(team_id)
             .bind(environment)
             .fetch_one(&self.pool)
             .await?;

@@ -235,6 +235,32 @@ fn normalized_config_for_compare(config: &serde_json::Value) -> serde_json::Valu
     sanitize_config_for_response(config)
 }
 
+fn string_config_value(config: &serde_json::Value, key: &str) -> Option<String> {
+    config
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_string)
+}
+
+fn ensure_connection_scope(
+    row: &ConnectionRow,
+    team_id: &str,
+    environment: &str,
+) -> Result<(), ApiError> {
+    let row_environment = string_config_value(&row.config, "_environment");
+    let row_team_id = string_config_value(&row.config, "_team_id");
+    if row_environment.as_deref() != Some(environment) || row_team_id.as_deref() != Some(team_id) {
+        return Err(production_request_error(
+            "scope_mismatch",
+            "Connection scope does not match request context",
+            StatusCode::FORBIDDEN,
+        ));
+    }
+    Ok(())
+}
+
 // === Handlers ===
 
 /// GET /connections
@@ -243,13 +269,17 @@ pub async fn list_connections(
     Extension(tenant): Extension<TenantContext>,
 ) -> Result<Json<ConnectionListResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
 
     let rows = state
         .storage
-        .list_connections(&tenant_id, &environment)
+        .list_connections(&tenant_id, &team_id, &environment)
         .await
         .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+    for row in &rows {
+        ensure_connection_scope(row, &team_id, &environment)?;
+    }
 
     let total = rows.len();
     let connections: Vec<ConnectionResponse> = rows.into_iter().map(row_to_response).collect();
@@ -265,6 +295,7 @@ pub async fn create_connection(
     Json(req): Json<CreateConnectionRequest>,
 ) -> Result<(StatusCode, Json<ConnectionResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
     let limits = &tenant.plan_limits;
 
@@ -274,7 +305,7 @@ pub async fn create_connection(
     if !limits.is_unlimited(limits.max_connections) {
         let count = state
             .storage
-            .count_connections(&tenant_id, &environment)
+            .count_connections(&tenant_id, &team_id, &environment)
             .await
             .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
         if count >= limits.max_connections {
@@ -297,6 +328,7 @@ pub async fn create_connection(
         .storage
         .create_connection(
             &tenant_id,
+            &team_id,
             &environment,
             &req.name,
             &req.connector_type.to_string(),
@@ -311,9 +343,10 @@ pub async fn create_connection(
 
     let row = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, row.id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, row.id)
         .await
         .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+    ensure_connection_scope(&row, &team_id, &environment)?;
 
     tracing::info!(
         connection_id = %row.id,
@@ -331,11 +364,12 @@ pub async fn get_connection(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
 
     let row = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
@@ -346,6 +380,7 @@ pub async fn get_connection(
             limit: None,
             plan: None,
         })?;
+    ensure_connection_scope(&row, &team_id, &environment)?;
 
     Ok(Json(row_to_response(row)))
 }
@@ -359,6 +394,7 @@ pub async fn update_connection(
     Json(req): Json<UpdateConnectionRequest>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
 
     enforce_production_guard(&headers, &environment)?;
@@ -366,7 +402,7 @@ pub async fn update_connection(
     // Get existing to validate config against its connector_type
     let existing = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
@@ -377,6 +413,7 @@ pub async fn update_connection(
             limit: None,
             plan: None,
         })?;
+    ensure_connection_scope(&existing, &team_id, &environment)?;
 
     let connector_type = parse_connector_type(&existing.connector_type)?;
     let auth_type = parse_auth_type(&existing.auth_type)?;
@@ -406,6 +443,7 @@ pub async fn update_connection(
         .storage
         .update_connection(
             &tenant_id,
+            &team_id,
             &environment,
             id,
             &req.name,
@@ -438,9 +476,10 @@ pub async fn update_connection(
 
     let row = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+    ensure_connection_scope(&row, &team_id, &environment)?;
 
     Ok(Json(row_to_response(row)))
 }
@@ -453,13 +492,14 @@ pub async fn delete_connection(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
 
     enforce_production_guard(&headers, &environment)?;
 
     state
         .storage
-        .delete_connection(&tenant_id, &environment, id)
+        .delete_connection(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
@@ -484,13 +524,14 @@ pub async fn test_connection(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let team_id = tenant.team_id.to_string();
     let environment = tenant.environment.clone();
 
     enforce_production_guard(&headers, &environment)?;
 
     let conn = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
@@ -501,6 +542,7 @@ pub async fn test_connection(
             limit: None,
             plan: None,
         })?;
+    ensure_connection_scope(&conn, &team_id, &environment)?;
 
     let connector_type = parse_connector_type(&conn.connector_type)?;
     let auth_type = parse_auth_type(&conn.auth_type)?;
@@ -529,6 +571,7 @@ pub async fn test_connection(
         .storage
         .update_connection_test_status(
             &tenant_id,
+            &team_id,
             &environment,
             id,
             next_status.as_str(),
@@ -558,9 +601,50 @@ pub async fn test_connection(
     // Re-fetch to get updated fields
     let row = state
         .storage
-        .get_connection_in_environment(&tenant_id, &environment, id)
+        .get_connection_in_environment(&tenant_id, &team_id, &environment, id)
         .await
         .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
+    ensure_connection_scope(&row, &team_id, &environment)?;
 
     Ok(Json(row_to_response(row)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scoped_row(team_id: &str, environment: &str) -> ConnectionRow {
+        ConnectionRow {
+            id: Uuid::new_v4(),
+            tenant_id: Uuid::new_v4(),
+            name: "example".to_string(),
+            connector_type: "slack".to_string(),
+            auth_type: "oauth2".to_string(),
+            config: serde_json::json!({
+                "_team_id": team_id,
+                "_environment": environment
+            }),
+            credentials: serde_json::json!({}),
+            status: "draft".to_string(),
+            last_tested_at: None,
+            last_test_status: None,
+            last_test_error: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn cross_scope_denial_rejects_mismatched_environment() {
+        let row = scoped_row("team-alpha", "dev");
+        let err = ensure_connection_scope(&row, "team-alpha", "prod").unwrap_err();
+        assert_eq!(err.error, "scope_mismatch");
+    }
+
+    #[test]
+    fn cross_scope_denial_rejects_mismatched_team() {
+        let row = scoped_row("team-alpha", "dev");
+        let err = ensure_connection_scope(&row, "team-beta", "dev").unwrap_err();
+        assert_eq!(err.error, "scope_mismatch");
+    }
 }
