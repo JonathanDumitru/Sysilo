@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -27,6 +28,7 @@ const (
 	ContextKeyUserID   contextKey = "user_id"
 	ContextKeyRoles    contextKey = "roles"
 	ContextKeyEnv      contextKey = "environment"
+	ContextKeySCIMScopes contextKey = "scim_scopes"
 )
 
 var (
@@ -459,4 +461,89 @@ func ensureHeader(headers []string, required string) []string {
 		}
 	}
 	return append(headers, required)
+}
+
+// RequireSCIMToken validates SCIM bearer credentials at the route boundary.
+// It accepts either a static token (SCIM_BEARER_TOKEN) or a signed JWT.
+func RequireSCIMToken(logger *zap.Logger, cfg config.AuthConfig) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authz := strings.TrimSpace(r.Header.Get("Authorization"))
+			if !strings.HasPrefix(strings.ToLower(authz), "bearer ") {
+				http.Error(w, "missing bearer token", http.StatusUnauthorized)
+				return
+			}
+			tokenString := strings.TrimSpace(authz[len("Bearer "):])
+			if tokenString == "" {
+				http.Error(w, "missing bearer token", http.StatusUnauthorized)
+				return
+			}
+
+			expected := strings.TrimSpace(os.Getenv("SCIM_BEARER_TOKEN"))
+			if expected != "" && subtle.ConstantTimeCompare([]byte(tokenString), []byte(expected)) == 1 {
+				ctx := context.WithValue(r.Context(), ContextKeySCIMScopes, []string{"scim:admin"})
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, jwt.ErrSignatureInvalid
+				}
+				return []byte(cfg.JWTSecret), nil
+			})
+			if err != nil {
+				logger.Debug("SCIM token validation failed", zap.Error(err))
+				http.Error(w, "invalid scim token", http.StatusUnauthorized)
+				return
+			}
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok || !token.Valid {
+				http.Error(w, "invalid scim token claims", http.StatusUnauthorized)
+				return
+			}
+
+			scopes := extractScopes(claims)
+			ctx := context.WithValue(r.Context(), ContextKeySCIMScopes, scopes)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireSCIMAdminScope enforces a SCIM admin scope on provision/deprovision routes.
+func RequireSCIMAdminScope() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			scopes, _ := r.Context().Value(ContextKeySCIMScopes).([]string)
+			if hasScope(scopes, "scim:admin") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, "forbidden", http.StatusForbidden)
+		})
+	}
+}
+
+func extractScopes(claims jwt.MapClaims) []string {
+	var scopes []string
+	if raw, ok := claims["scope"].(string); ok {
+		scopes = append(scopes, strings.Fields(raw)...)
+	}
+	if raw, ok := claims["scopes"].([]interface{}); ok {
+		for _, item := range raw {
+			if s, isString := item.(string); isString && s != "" {
+				scopes = append(scopes, s)
+			}
+		}
+	}
+	return scopes
+}
+
+func hasScope(scopes []string, scope string) bool {
+	for _, candidate := range scopes {
+		if candidate == scope {
+			return true
+		}
+	}
+	return false
 }

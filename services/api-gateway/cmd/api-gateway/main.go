@@ -100,6 +100,26 @@ func main() {
 	// Public plan listing (no auth needed for pricing page)
 	r.Get("/api/v1/plans", h.ListPlans)
 
+	// Public auth flows
+	r.Route("/api/v1/auth", func(r chi.Router) {
+		r.Get("/sso/start", h.StartSSO)
+		r.Get("/sso/callback", h.HandleSSOCallback)
+		r.Post("/breakglass/start", h.StartBreakglassLogin)
+		r.Post("/breakglass/complete", h.CompleteBreakglassLogin)
+		r.Post("/session/refresh", h.RefreshSession)
+	})
+
+	// SCIM provisioning routes (SCIM token + admin scope required)
+	r.Route("/api/v1/scim", func(r chi.Router) {
+		r.Use(middleware.RequireSCIMToken(logger, cfg.Auth))
+		r.Use(middleware.RequireSCIMAdminScope())
+		r.Route("/users", func(r chi.Router) {
+			r.Post("/", h.SCIMCreateUser)
+			r.Put("/{userID}", h.SCIMUpdateUser)
+			r.Delete("/{userID}", h.Deactivate)
+		})
+	})
+
 	// API routes (auth required)
 	r.Route("/api/v1", func(r chi.Router) {
 		// Auth middleware

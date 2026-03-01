@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	gatewaymiddleware "github.com/sysilo/sysilo/services/api-gateway/internal/middleware"
 	"go.uber.org/zap"
 )
 
@@ -132,21 +133,29 @@ func (h *Handler) Deactivate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) scimTenantAndAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
-	expected := os.Getenv("SCIM_BEARER_TOKEN")
-	if expected == "" {
-		h.Logger.Error("SCIM token is not configured")
-		respondError(w, http.StatusInternalServerError, "scim is not configured")
-		return "", false
-	}
-	authz := strings.TrimSpace(r.Header.Get("Authorization"))
-	if !strings.HasPrefix(strings.ToLower(authz), "bearer ") {
-		respondError(w, http.StatusUnauthorized, "missing bearer token")
-		return "", false
-	}
-	given := strings.TrimSpace(authz[len("Bearer "):])
-	if given != expected {
-		respondError(w, http.StatusUnauthorized, "invalid scim token")
-		return "", false
+	if scopes, ok := r.Context().Value(gatewaymiddleware.ContextKeySCIMScopes).([]string); ok && len(scopes) > 0 {
+		if !scimHasScope(scopes, "scim:admin") {
+			respondError(w, http.StatusForbidden, "insufficient scim scope")
+			return "", false
+		}
+	} else {
+		// Backward-compatible fallback for direct handler tests/calls outside route middleware.
+		expected := os.Getenv("SCIM_BEARER_TOKEN")
+		if expected == "" {
+			h.Logger.Error("SCIM token is not configured")
+			respondError(w, http.StatusInternalServerError, "scim is not configured")
+			return "", false
+		}
+		authz := strings.TrimSpace(r.Header.Get("Authorization"))
+		if !strings.HasPrefix(strings.ToLower(authz), "bearer ") {
+			respondError(w, http.StatusUnauthorized, "missing bearer token")
+			return "", false
+		}
+		given := strings.TrimSpace(authz[len("Bearer "):])
+		if given != expected {
+			respondError(w, http.StatusUnauthorized, "invalid scim token")
+			return "", false
+		}
 	}
 
 	tenantID := r.URL.Query().Get("tenant_id")
@@ -158,6 +167,15 @@ func (h *Handler) scimTenantAndAuth(w http.ResponseWriter, r *http.Request) (str
 		return "", false
 	}
 	return tenantID, true
+}
+
+func scimHasScope(scopes []string, required string) bool {
+	for _, scope := range scopes {
+		if scope == required {
+			return true
+		}
+	}
+	return false
 }
 
 func scimEmail(req scimUserPayload) string {
