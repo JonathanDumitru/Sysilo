@@ -3,8 +3,10 @@ import {
   listConnections,
   createConnection,
   updateConnection,
+  activateConnection,
   deleteConnection,
   testConnection,
+  type Connection,
   type CreateConnectionRequest,
   type UpdateConnectionRequest,
 } from '../services/connections';
@@ -56,6 +58,17 @@ export function useTestConnection() {
 
   return useMutation({
     mutationFn: (id: string) => testConnection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections'] });
+    },
+  });
+}
+
+export function useActivateConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (connection: Connection) => activateConnection(connection),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections'] });
     },

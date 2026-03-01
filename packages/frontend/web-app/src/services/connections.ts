@@ -4,6 +4,8 @@ const DEV_TENANT_ID = 'dev-tenant';
 
 export type ConnectorType = 'postgresql' | 'mysql' | 'snowflake' | 'oracle' | 'salesforce' | 'rest_api';
 export type AuthType = 'credential' | 'oauth' | 'api_key';
+export type ConnectionStatus = 'draft' | 'tested' | 'active' | 'error' | 'untested';
+export type ConnectionTestStatus = 'success' | 'failure';
 
 export interface Connection {
   id: string;
@@ -12,9 +14,9 @@ export interface Connection {
   auth_type: AuthType;
   config: Record<string, unknown>;
   has_credentials: boolean;
-  status: string;
+  status: ConnectionStatus;
   last_tested_at?: string;
-  last_test_status?: string;
+  last_test_status?: ConnectionTestStatus;
   last_test_error?: string;
   created_at: string;
   updated_at: string;
@@ -37,6 +39,7 @@ export interface UpdateConnectionRequest {
   name: string;
   config: Record<string, unknown>;
   credentials?: Record<string, unknown>;
+  desired_status?: 'active';
 }
 
 const tenantHeaders = { 'X-Tenant-ID': DEV_TENANT_ID };
@@ -67,6 +70,14 @@ export async function updateConnection(id: string, request: UpdateConnectionRequ
     method: 'PUT',
     headers: tenantHeaders,
     body: JSON.stringify(request),
+  });
+}
+
+export async function activateConnection(connection: Connection): Promise<Connection> {
+  return updateConnection(connection.id, {
+    name: connection.name,
+    config: connection.config,
+    desired_status: 'active',
   });
 }
 

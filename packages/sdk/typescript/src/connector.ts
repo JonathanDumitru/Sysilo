@@ -153,3 +153,75 @@ export class ConnectorRegistry {
     return new ConnectorClass();
   }
 }
+
+export type ConnectorAuthType = 'credential' | 'oauth' | 'api_key';
+export type SupportedConnectorType =
+  | 'postgresql'
+  | 'mysql'
+  | 'snowflake'
+  | 'oracle'
+  | 'salesforce'
+  | 'rest_api';
+
+export interface SupportedConnectorSpec {
+  connectorType: SupportedConnectorType;
+  label: string;
+  authType: ConnectorAuthType;
+  configFields: readonly string[];
+  requiresCredentialReplacementOnEdit: boolean;
+}
+
+export const SUPPORTED_CONNECTORS: readonly SupportedConnectorSpec[] = [
+  {
+    connectorType: 'postgresql',
+    label: 'PostgreSQL',
+    authType: 'credential',
+    configFields: ['host', 'port', 'database', 'ssl_mode'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+  {
+    connectorType: 'mysql',
+    label: 'MySQL',
+    authType: 'credential',
+    configFields: ['host', 'port', 'database'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+  {
+    connectorType: 'snowflake',
+    label: 'Snowflake',
+    authType: 'credential',
+    configFields: ['account', 'warehouse', 'database', 'schema'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+  {
+    connectorType: 'oracle',
+    label: 'Oracle',
+    authType: 'credential',
+    configFields: ['host', 'port', 'service_name'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+  {
+    connectorType: 'salesforce',
+    label: 'Salesforce',
+    authType: 'oauth',
+    configFields: ['instance_url', 'api_version'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+  {
+    connectorType: 'rest_api',
+    label: 'REST API',
+    authType: 'api_key',
+    configFields: ['base_url', 'headers'],
+    requiresCredentialReplacementOnEdit: true,
+  },
+];
+
+export function getConnectorSpec(
+  connectorType: SupportedConnectorType
+): SupportedConnectorSpec {
+  const spec = SUPPORTED_CONNECTORS.find((item) => item.connectorType === connectorType);
+  if (!spec) {
+    throw new Error(`Unsupported connector type: ${connectorType}`);
+  }
+  return spec;
+}

@@ -18,9 +18,11 @@ import {
   useCreateConnection,
   useDeleteConnection,
   useTestConnection,
+  useActivateConnection,
 } from '../hooks/useConnections';
 import {
   CONNECTOR_TYPES,
+  type Connection,
   type ConnectorType,
   type CreateConnectionRequest,
 } from '../services/connections';
@@ -68,6 +70,22 @@ function formatFieldLabel(field: string): string {
 // ──────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
+  if (status === 'draft' || status === 'untested') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+        <Circle className="w-3 h-3" />
+        Draft
+      </span>
+    );
+  }
+  if (status === 'tested') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+        <CheckCircle className="w-3 h-3" />
+        Tested
+      </span>
+    );
+  }
   if (status === 'active') {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">
@@ -87,7 +105,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
       <Circle className="w-3 h-3" />
-      Untested
+      Unknown
     </span>
   );
 }
@@ -250,6 +268,9 @@ function CreateConnectionModal({ open, onClose, runWithProductionGuard }: Create
             {/* Credentials */}
             {CONNECTOR_TYPES[selectedType].authType === 'credential' && (
               <>
+                <p className="text-xs text-gray-500">
+                  Save as draft now. You can test and activate after credentials are provided.
+                </p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Username
@@ -278,33 +299,43 @@ function CreateConnectionModal({ open, onClose, runWithProductionGuard }: Create
             )}
 
             {CONNECTOR_TYPES[selectedType].authType === 'api_key' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="API Key"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
+              <>
+                <p className="text-xs text-gray-500">
+                  API keys are write-only and cannot be read back after save.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="API Key"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </>
             )}
 
             {CONNECTOR_TYPES[selectedType].authType === 'oauth' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Access Token
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Access Token"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
+              <>
+                <p className="text-xs text-gray-500">
+                  OAuth tokens are write-only. Replace with a new token when editing.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Access Token
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Access Token"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </>
             )}
 
             {/* Actions */}
@@ -324,7 +355,7 @@ function CreateConnectionModal({ open, onClose, runWithProductionGuard }: Create
                 {createMutation.isPending && (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 )}
-                {createMutation.isPending ? 'Creating...' : 'Create Connection'}
+                {createMutation.isPending ? 'Saving Draft...' : 'Save Draft'}
               </button>
             </div>
           </form>
@@ -412,11 +443,13 @@ export function ConnectionsPage() {
   const { data: connections, isLoading, error } = useConnections();
   const deleteMutation = useDeleteConnection();
   const testMutation = useTestConnection();
+  const activateMutation = useActivateConnection();
   const [environment, setEnvironment] = useState(getStoredEnvironment());
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
 
   useEffect(() => {
     const onEnvironmentChanged = () => setEnvironment(getStoredEnvironment());
@@ -468,6 +501,23 @@ export function ConnectionsPage() {
     });
     if (executed) {
       setDeleteTarget(null);
+    }
+  }
+
+  async function handleActivate(connection: Connection) {
+    setActivatingId(connection.id);
+    try {
+      const canActivate = connection.last_test_status === 'success';
+      if (!canActivate) {
+        window.alert('Run a successful test before activation.');
+        return;
+      }
+
+      await runWithProductionGuard('activate a connection', async () => {
+        await activateMutation.mutateAsync(connection);
+      });
+    } finally {
+      setActivatingId(null);
     }
   }
 
@@ -551,6 +601,9 @@ export function ConnectionsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Last Tested
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Test Result
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -561,6 +614,8 @@ export function ConnectionsPage() {
                 const meta = CONNECTOR_TYPES[conn.connector_type];
                 const Icon = connectorIcons[conn.connector_type];
                 const isTesting = testingId === conn.id;
+                const isActivating = activatingId === conn.id;
+                const canActivate = conn.last_test_status === 'success' && conn.status !== 'active';
 
                 return (
                   <tr key={conn.id} className="hover:bg-gray-50">
@@ -583,6 +638,26 @@ export function ConnectionsPage() {
                         {conn.last_tested_at ? formatRelativeTime(conn.last_tested_at) : 'Never'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {conn.last_test_status === 'success' && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Success
+                        </span>
+                      )}
+                      {conn.last_test_status === 'failure' && (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 px-2 py-1 rounded-full"
+                          title={conn.last_test_error ?? 'Test failed'}
+                        >
+                          <XCircle className="w-3 h-3" />
+                          Failed
+                        </span>
+                      )}
+                      {!conn.last_test_status && (
+                        <span className="text-xs text-gray-400">Not run</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -595,6 +670,18 @@ export function ConnectionsPage() {
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <TestTube className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleActivate(conn)}
+                          disabled={!canActivate || isActivating}
+                          className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-40"
+                          title={canActivate ? 'Activate connection' : 'Activation requires successful test'}
+                        >
+                          {isActivating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
                           )}
                         </button>
                         <button
