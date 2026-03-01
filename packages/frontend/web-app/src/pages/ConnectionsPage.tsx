@@ -147,21 +147,22 @@ function CreateConnectionModal({ open, onClose, runWithProductionGuard }: Create
     if (!selectedType) return;
 
     const meta = CONNECTOR_TYPES[selectedType];
+    const authType = meta.authModes[0] ?? meta.authType;
 
     const credentials: Record<string, unknown> = {};
-    if (meta.authType === 'credential') {
+    if (authType === 'credential') {
       credentials.username = username;
       credentials.password = password;
-    } else if (meta.authType === 'api_key') {
+    } else if (authType === 'api_key') {
       credentials.api_key = password;
-    } else if (meta.authType === 'oauth') {
+    } else if (authType === 'oauth') {
       credentials.access_token = password;
     }
 
     const request: CreateConnectionRequest = {
       name,
       connector_type: selectedType,
-      auth_type: meta.authType,
+      auth_type: authType,
       config: { ...configValues },
       credentials,
     };
@@ -212,7 +213,7 @@ function CreateConnectionModal({ open, onClose, runWithProductionGuard }: Create
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{meta.label}</p>
-                      <p className="text-xs text-gray-500">{meta.authType}</p>
+                      <p className="text-xs text-gray-500">{meta.authModes.join(' / ')}</p>
                     </div>
                   </button>
                 );

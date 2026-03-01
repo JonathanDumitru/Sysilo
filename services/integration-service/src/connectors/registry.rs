@@ -1,6 +1,8 @@
 use std::time::Instant;
 
 use crate::connections::{AuthType, ConnectorType};
+#[path = "specs.rs"]
+mod specs;
 
 #[derive(Debug, Clone)]
 pub struct ConnectorHealthCheckResult {
@@ -278,5 +280,54 @@ mod tests {
 
         assert!(!result.healthy);
         assert!(result.message.contains("credentials.password"));
+    }
+
+    #[test]
+    fn connector_spec_contract_registry_ids_match_spec_ids() {
+        for entry in PRIORITIZED_CONNECTOR_HEALTH_CHECKS {
+            let spec = specs::get_connector_spec(&entry.connector_type);
+            assert_eq!(spec.connector_id, entry.connector_type.to_string());
+        }
+    }
+
+    #[test]
+    fn connector_spec_contract_registry_auth_modes_are_supported() {
+        let cases = [
+            (
+                ConnectorType::Postgresql,
+                AuthType::Credential,
+                serde_json::json!({"host": "db.local", "port": 5432, "database": "analytics"}),
+            ),
+            (
+                ConnectorType::Mysql,
+                AuthType::Credential,
+                serde_json::json!({"host": "db.local", "port": 3306, "database": "analytics"}),
+            ),
+            (
+                ConnectorType::Snowflake,
+                AuthType::Credential,
+                serde_json::json!({"account": "acct", "warehouse": "wh", "database": "db"}),
+            ),
+            (
+                ConnectorType::Oracle,
+                AuthType::Credential,
+                serde_json::json!({"host": "db.local", "port": 1521, "service_name": "svc"}),
+            ),
+            (
+                ConnectorType::Salesforce,
+                AuthType::Oauth,
+                serde_json::json!({"instance_url": "https://example.my.salesforce.com"}),
+            ),
+            (
+                ConnectorType::RestApi,
+                AuthType::ApiKey,
+                serde_json::json!({"base_url": "https://api.example.com"}),
+            ),
+        ];
+
+        for (connector_type, auth_type, config) in cases {
+            let result = specs::validate_connector_spec(&connector_type, &auth_type, &config);
+            assert!(result.is_ok(), "expected spec validation to pass");
+        }
     }
 }

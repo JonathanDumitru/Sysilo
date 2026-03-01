@@ -9,10 +9,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::ApiError;
+#[path = "../connectors/specs.rs"]
+mod specs;
 use crate::connections::registry;
 use crate::connections::{
     determine_next_status, has_credentials, sanitize_config_for_response,
-    validate_and_normalize_credentials, validate_config, AuthType, ConnectionLifecycleAction,
+    validate_and_normalize_credentials, AuthType, ConnectionLifecycleAction,
     ConnectionLifecycleStatus, ConnectorType,
 };
 use crate::middleware::TenantContext;
@@ -318,7 +320,7 @@ pub async fn create_connection(
         }
     }
 
-    validate_config(&req.connector_type, &req.config).map_err(|e| {
+    specs::validate_connector_spec(&req.connector_type, &req.auth_type, &req.config).map_err(|e| {
         production_request_error("validation_error", &e, StatusCode::BAD_REQUEST)
     })?;
 
@@ -418,7 +420,7 @@ pub async fn update_connection(
     let connector_type = parse_connector_type(&existing.connector_type)?;
     let auth_type = parse_auth_type(&existing.auth_type)?;
 
-    validate_config(&connector_type, &req.config).map_err(|e| {
+    specs::validate_connector_spec(&connector_type, &auth_type, &req.config).map_err(|e| {
         production_request_error("validation_error", &e, StatusCode::BAD_REQUEST)
     })?;
 

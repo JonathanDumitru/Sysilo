@@ -1,8 +1,14 @@
 import { getAuthContextHeaders } from '../config/env';
 import { apiClient, GATEWAY_CONNECTIONS_BASE_PATH } from './api';
+import {
+  SUPPORTED_CONNECTORS,
+  type ConnectorAuthType,
+  type SupportedConnectorSpec,
+  type SupportedConnectorType,
+} from '../../../../sdk/typescript/src/index.ts';
 
-export type ConnectorType = 'postgresql' | 'mysql' | 'snowflake' | 'oracle' | 'salesforce' | 'rest_api';
-export type AuthType = 'credential' | 'oauth' | 'api_key';
+export type ConnectorType = SupportedConnectorType;
+export type AuthType = ConnectorAuthType;
 export type ConnectionStatus = 'draft' | 'tested' | 'active' | 'error' | 'untested';
 export type ConnectionTestStatus = 'success' | 'failure';
 
@@ -95,11 +101,22 @@ export async function testConnection(id: string): Promise<Connection> {
 }
 
 /** Connector type metadata for UI display */
-export const CONNECTOR_TYPES: Record<ConnectorType, { label: string; authType: AuthType; configFields: string[] }> = {
-  postgresql: { label: 'PostgreSQL', authType: 'credential', configFields: ['host', 'port', 'database', 'ssl_mode'] },
-  mysql: { label: 'MySQL', authType: 'credential', configFields: ['host', 'port', 'database'] },
-  snowflake: { label: 'Snowflake', authType: 'credential', configFields: ['account', 'warehouse', 'database', 'schema'] },
-  oracle: { label: 'Oracle', authType: 'credential', configFields: ['host', 'port', 'service_name'] },
-  salesforce: { label: 'Salesforce', authType: 'oauth', configFields: ['instance_url', 'api_version'] },
-  rest_api: { label: 'REST API', authType: 'api_key', configFields: ['base_url', 'headers'] },
-};
+export type ConnectorUiMetadata = Pick<
+  SupportedConnectorSpec,
+  'label' | 'authType' | 'authModes' | 'configFields' | 'requiresCredentialReplacementOnEdit' | 'capabilities'
+>;
+
+export const CONNECTOR_TYPES: Record<ConnectorType, ConnectorUiMetadata> = SUPPORTED_CONNECTORS.reduce(
+  (acc, spec) => {
+    acc[spec.connectorType] = {
+      label: spec.label,
+      authType: spec.authType,
+      authModes: spec.authModes,
+      configFields: spec.configFields,
+      requiresCredentialReplacementOnEdit: spec.requiresCredentialReplacementOnEdit,
+      capabilities: spec.capabilities,
+    };
+    return acc;
+  },
+  {} as Record<ConnectorType, ConnectorUiMetadata>
+);

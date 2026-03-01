@@ -7,3 +7,10 @@
 export * from './types';
 export * from './connector';
 export * from './testing';
+
+export type {
+  ConnectorAuthType,
+  SupportedConnectorCapabilities,
+  SupportedConnectorSpec,
+  SupportedConnectorType,
+} from './connector';

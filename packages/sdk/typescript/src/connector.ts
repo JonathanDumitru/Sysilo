@@ -163,63 +163,109 @@ export type SupportedConnectorType =
   | 'salesforce'
   | 'rest_api';
 
+export interface SupportedConnectorCapabilities {
+  supportsRead: boolean;
+  supportsWrite: boolean;
+  supportsDiscover: boolean;
+  supportsHealthCheck: boolean;
+}
+
 export interface SupportedConnectorSpec {
+  connectorType: SupportedConnectorType;
+  connectorId: SupportedConnectorType;
+  label: string;
+  authType: ConnectorAuthType;
+  authModes: readonly ConnectorAuthType[];
+  capabilities: SupportedConnectorCapabilities;
+  configFields: readonly string[];
+  requiresCredentialReplacementOnEdit: boolean;
+}
+
+function createConnectorSpec(spec: {
   connectorType: SupportedConnectorType;
   label: string;
   authType: ConnectorAuthType;
   configFields: readonly string[];
   requiresCredentialReplacementOnEdit: boolean;
+  capabilities?: Partial<SupportedConnectorCapabilities>;
+}): SupportedConnectorSpec {
+  return {
+    connectorType: spec.connectorType,
+    connectorId: spec.connectorType,
+    label: spec.label,
+    authType: spec.authType,
+    authModes: [spec.authType],
+    configFields: spec.configFields,
+    requiresCredentialReplacementOnEdit: spec.requiresCredentialReplacementOnEdit,
+    capabilities: {
+      supportsRead: true,
+      supportsWrite: true,
+      supportsDiscover: true,
+      supportsHealthCheck: true,
+      ...spec.capabilities,
+    },
+  };
 }
 
-export const SUPPORTED_CONNECTORS: readonly SupportedConnectorSpec[] = [
-  {
+export const SUPPORTED_CONNECTORS = [
+  createConnectorSpec({
     connectorType: 'postgresql',
     label: 'PostgreSQL',
     authType: 'credential',
     configFields: ['host', 'port', 'database', 'ssl_mode'],
     requiresCredentialReplacementOnEdit: true,
-  },
-  {
+  }),
+  createConnectorSpec({
     connectorType: 'mysql',
     label: 'MySQL',
     authType: 'credential',
     configFields: ['host', 'port', 'database'],
     requiresCredentialReplacementOnEdit: true,
-  },
-  {
+  }),
+  createConnectorSpec({
     connectorType: 'snowflake',
     label: 'Snowflake',
     authType: 'credential',
     configFields: ['account', 'warehouse', 'database', 'schema'],
     requiresCredentialReplacementOnEdit: true,
-  },
-  {
+  }),
+  createConnectorSpec({
     connectorType: 'oracle',
     label: 'Oracle',
     authType: 'credential',
     configFields: ['host', 'port', 'service_name'],
     requiresCredentialReplacementOnEdit: true,
-  },
-  {
+  }),
+  createConnectorSpec({
     connectorType: 'salesforce',
     label: 'Salesforce',
     authType: 'oauth',
     configFields: ['instance_url', 'api_version'],
     requiresCredentialReplacementOnEdit: true,
-  },
-  {
+  }),
+  createConnectorSpec({
     connectorType: 'rest_api',
     label: 'REST API',
     authType: 'api_key',
     configFields: ['base_url', 'headers'],
     requiresCredentialReplacementOnEdit: true,
-  },
-];
+  }),
+] as const satisfies readonly SupportedConnectorSpec[];
+
+export const SUPPORTED_CONNECTOR_MAP = Object.freeze(
+  SUPPORTED_CONNECTORS.reduce(
+    (acc, spec) => {
+      acc[spec.connectorType] = spec;
+      return acc;
+    },
+    {} as Record<SupportedConnectorType, SupportedConnectorSpec>
+  )
+);
 
 export function getConnectorSpec(
   connectorType: SupportedConnectorType
 ): SupportedConnectorSpec {
-  const spec = SUPPORTED_CONNECTORS.find((item) => item.connectorType === connectorType);
+  const spec = SUPPORTED_CONNECTOR_MAP[connectorType];
   if (!spec) {
     throw new Error(`Unsupported connector type: ${connectorType}`);
   }
