@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
+	"github.com/sysilo/sysilo/services/api-gateway/internal/authorization"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/config"
 	"go.uber.org/zap"
 )
@@ -25,6 +26,7 @@ const (
 	ContextKeyTenantID contextKey = "tenant_id"
 	ContextKeyUserID   contextKey = "user_id"
 	ContextKeyRoles    contextKey = "roles"
+	ContextKeyEnv      contextKey = "environment"
 )
 
 var (
@@ -80,8 +82,9 @@ func CORS(cfg config.CORSConfig) func(next http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 
+			allowedHeaders := ensureHeader(cfg.AllowedHeaders, "X-Environment")
 			w.Header().Set("Access-Control-Allow-Methods", strings.Join(cfg.AllowedMethods, ", "))
-			w.Header().Set("Access-Control-Allow-Headers", strings.Join(cfg.AllowedHeaders, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 
 			if len(cfg.ExposedHeaders) > 0 {
 				w.Header().Set("Access-Control-Expose-Headers", strings.Join(cfg.ExposedHeaders, ", "))
@@ -294,6 +297,16 @@ func TenantContext(logger *zap.Logger) func(next http.Handler) http.Handler {
 				}
 			}
 
+			rawEnvironment := r.Header.Get("X-Environment")
+			environment, ok := authorization.ParseEnvironment(rawEnvironment)
+			if !ok {
+				http.Error(w, "valid environment context required", http.StatusBadRequest)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), ContextKeyEnv, string(environment))
+			r = r.WithContext(ctx)
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -306,6 +319,11 @@ func RequireRole(requiredRoles ...string) func(next http.Handler) http.Handler {
 			roles, ok := r.Context().Value(ContextKeyRoles).([]string)
 			if !ok {
 				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			environment := GetEnvironment(r.Context())
+			if environment == "" {
+				http.Error(w, "valid environment context required", http.StatusBadRequest)
 				return
 			}
 
@@ -324,6 +342,12 @@ func RequireRole(requiredRoles ...string) func(next http.Handler) http.Handler {
 			}
 
 			if !hasRole {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			action := actionForRequest(r)
+			parsedEnvironment, _ := authorization.ParseEnvironment(environment)
+			if !authorization.IsAllowed(roles, parsedEnvironment, action) {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -406,4 +430,33 @@ func GetRoles(ctx context.Context) []string {
 		return v.([]string)
 	}
 	return nil
+}
+
+// GetEnvironment extracts environment from request context.
+func GetEnvironment(ctx context.Context) string {
+	if v := ctx.Value(ContextKeyEnv); v != nil {
+		return v.(string)
+	}
+	return ""
+}
+
+func actionForRequest(r *http.Request) authorization.Action {
+	if strings.HasPrefix(r.URL.Path, "/api/admin") || strings.Contains(r.URL.Path, "/admin/") {
+		return authorization.ActionAdmin
+	}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return authorization.ActionRead
+	default:
+		return authorization.ActionWrite
+	}
+}
+
+func ensureHeader(headers []string, required string) []string {
+	for _, header := range headers {
+		if strings.EqualFold(header, required) {
+			return headers
+		}
+	}
+	return append(headers, required)
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   TestTube,
@@ -24,6 +24,12 @@ import {
   type ConnectorType,
   type CreateConnectionRequest,
 } from '../services/connections';
+import {
+  ENVIRONMENT_EVENT,
+  getStoredEnvironment,
+  PRODUCTION_CONFIRMATION_KEY,
+  PRODUCTION_REASON_KEY,
+} from '../components/EnvironmentSwitcher';
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -93,9 +99,10 @@ function StatusBadge({ status }: { status: string }) {
 interface CreateModalProps {
   open: boolean;
   onClose: () => void;
+  runWithProductionGuard: (actionLabel: string, operation: () => Promise<void>) => Promise<boolean>;
 }
 
-function CreateConnectionModal({ open, onClose }: CreateModalProps) {
+function CreateConnectionModal({ open, onClose, runWithProductionGuard }: CreateModalProps) {
   const createMutation = useCreateConnection();
 
   const [selectedType, setSelectedType] = useState<ConnectorType | null>(null);
@@ -141,8 +148,12 @@ function CreateConnectionModal({ open, onClose }: CreateModalProps) {
       credentials,
     };
 
-    await createMutation.mutateAsync(request);
-    handleClose();
+    const executed = await runWithProductionGuard('create a connection', async () => {
+      await createMutation.mutateAsync(request);
+    });
+    if (executed) {
+      handleClose();
+    }
   }
 
   if (!open) return null;
@@ -401,15 +412,50 @@ export function ConnectionsPage() {
   const { data: connections, isLoading, error } = useConnections();
   const deleteMutation = useDeleteConnection();
   const testMutation = useTestConnection();
+  const [environment, setEnvironment] = useState(getStoredEnvironment());
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const onEnvironmentChanged = () => setEnvironment(getStoredEnvironment());
+    window.addEventListener(ENVIRONMENT_EVENT, onEnvironmentChanged);
+    return () => window.removeEventListener(ENVIRONMENT_EVENT, onEnvironmentChanged);
+  }, []);
+
+  async function runWithProductionGuard(actionLabel: string, operation: () => Promise<void>): Promise<boolean> {
+    if (environment !== 'prod') {
+      await operation();
+      return true;
+    }
+
+    const confirmed = window.confirm(`Confirm production action: ${actionLabel}.`);
+    if (!confirmed) return false;
+
+    const reason = window.prompt('Provide a reason for this production change:')?.trim() ?? '';
+    if (!reason) {
+      window.alert('A change reason is required for production actions.');
+      return false;
+    }
+
+    sessionStorage.setItem(PRODUCTION_CONFIRMATION_KEY, 'true');
+    sessionStorage.setItem(PRODUCTION_REASON_KEY, reason);
+    try {
+      await operation();
+      return true;
+    } finally {
+      sessionStorage.removeItem(PRODUCTION_CONFIRMATION_KEY);
+      sessionStorage.removeItem(PRODUCTION_REASON_KEY);
+    }
+  }
+
   async function handleTest(id: string) {
     setTestingId(id);
     try {
-      await testMutation.mutateAsync(id);
+      await runWithProductionGuard('test a connection', async () => {
+        await testMutation.mutateAsync(id);
+      });
     } finally {
       setTestingId(null);
     }
@@ -417,8 +463,12 @@ export function ConnectionsPage() {
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await deleteMutation.mutateAsync(deleteTarget.id);
-    setDeleteTarget(null);
+    const executed = await runWithProductionGuard('delete a connection', async () => {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+    });
+    if (executed) {
+      setDeleteTarget(null);
+    }
   }
 
   return (
@@ -431,6 +481,18 @@ export function ConnectionsPage() {
             Manage credentials for your data sources and targets
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
+              environment === 'prod'
+                ? 'bg-red-100 text-red-700'
+                : environment === 'staging'
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-emerald-100 text-emerald-700'
+            }`}
+          >
+            {environment}
+          </span>
         <button
           onClick={() => setIsCreateOpen(true)}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
@@ -438,6 +500,7 @@ export function ConnectionsPage() {
           <Plus className="w-4 h-4" />
           New Connection
         </button>
+        </div>
       </div>
 
       {/* Loading */}
@@ -552,7 +615,11 @@ export function ConnectionsPage() {
       )}
 
       {/* Create modal */}
-      <CreateConnectionModal open={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateConnectionModal
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        runWithProductionGuard={runWithProductionGuard}
+      />
 
       {/* Delete confirmation modal */}
       {deleteTarget && (

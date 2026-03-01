@@ -37,9 +37,7 @@ impl Storage {
 
     /// Check database connectivity
     pub async fn health_check(&self) -> Result<(), StorageError> {
-        sqlx::query("SELECT 1")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query("SELECT 1").execute(&self.pool).await?;
         Ok(())
     }
 
@@ -157,11 +155,7 @@ impl Storage {
     }
 
     /// Get a run by ID
-    pub async fn get_run(
-        &self,
-        tenant_id: &str,
-        run_id: Uuid,
-    ) -> Result<RunRow, StorageError> {
+    pub async fn get_run(&self, tenant_id: &str, run_id: Uuid) -> Result<RunRow, StorageError> {
         let row: Option<RunRow> = sqlx::query_as(
             r#"
             SELECT
@@ -483,6 +477,7 @@ impl Storage {
     pub async fn list_connections(
         &self,
         tenant_id: &str,
+        environment: &str,
     ) -> Result<Vec<ConnectionRow>, StorageError> {
         let rows: Vec<ConnectionRow> = sqlx::query_as(
             r#"
@@ -492,17 +487,47 @@ impl Storage {
                    created_at, updated_at
             FROM connections
             WHERE tenant_id = $1::uuid
+              AND config->>'_environment' = $2
             ORDER BY created_at DESC
             "#,
         )
         .bind(tenant_id)
+        .bind(environment)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(rows)
     }
 
-    /// Get a single connection
+    /// Get a single connection within an environment
+    pub async fn get_connection_in_environment(
+        &self,
+        tenant_id: &str,
+        environment: &str,
+        connection_id: Uuid,
+    ) -> Result<ConnectionRow, StorageError> {
+        let row: Option<ConnectionRow> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, name, connector_type, auth_type,
+                   config, credentials, status,
+                   last_tested_at, last_test_status, last_test_error,
+                   created_at, updated_at
+            FROM connections
+            WHERE tenant_id = $1::uuid
+              AND config->>'_environment' = $2
+              AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(environment)
+        .bind(connection_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| StorageError::NotFound(format!("Connection {}", connection_id)))
+    }
+
+    /// Get a single connection for a tenant (legacy behavior)
     pub async fn get_connection(
         &self,
         tenant_id: &str,
@@ -530,6 +555,7 @@ impl Storage {
     pub async fn create_connection(
         &self,
         tenant_id: &str,
+        environment: &str,
         name: &str,
         connector_type: &str,
         auth_type: &str,
@@ -539,7 +565,7 @@ impl Storage {
         let row: ConnectionRow = sqlx::query_as(
             r#"
             INSERT INTO connections (tenant_id, name, connector_type, auth_type, config, credentials)
-            VALUES ($1::uuid, $2, $3, $4, $5, $6)
+            VALUES ($1::uuid, $2, $3, $4, jsonb_set($5, '{_environment}', to_jsonb($6::text), true), $7)
             RETURNING id, tenant_id, name, connector_type, auth_type,
                       config, credentials, status,
                       last_tested_at, last_test_status, last_test_error,
@@ -551,6 +577,7 @@ impl Storage {
         .bind(connector_type)
         .bind(auth_type)
         .bind(config)
+        .bind(environment)
         .bind(credentials)
         .fetch_one(&self.pool)
         .await?;
@@ -562,6 +589,7 @@ impl Storage {
     pub async fn update_connection(
         &self,
         tenant_id: &str,
+        environment: &str,
         connection_id: Uuid,
         name: &str,
         config: serde_json::Value,
@@ -571,8 +599,12 @@ impl Storage {
             sqlx::query_as(
                 r#"
                 UPDATE connections
-                SET name = $3, config = $4, credentials = $5, updated_at = NOW()
-                WHERE tenant_id = $1::uuid AND id = $2
+                SET name = $4,
+                    config = jsonb_set($5, '{_environment}', to_jsonb($3::text), true),
+                    credentials = $6, updated_at = NOW()
+                WHERE tenant_id = $1::uuid
+                  AND config->>'_environment' = $3
+                  AND id = $2
                 RETURNING id, tenant_id, name, connector_type, auth_type,
                           config, credentials, status,
                           last_tested_at, last_test_status, last_test_error,
@@ -581,6 +613,7 @@ impl Storage {
             )
             .bind(tenant_id)
             .bind(connection_id)
+            .bind(environment)
             .bind(name)
             .bind(config)
             .bind(creds)
@@ -590,8 +623,12 @@ impl Storage {
             sqlx::query_as(
                 r#"
                 UPDATE connections
-                SET name = $3, config = $4, updated_at = NOW()
-                WHERE tenant_id = $1::uuid AND id = $2
+                SET name = $4,
+                    config = jsonb_set($5, '{_environment}', to_jsonb($3::text), true),
+                    updated_at = NOW()
+                WHERE tenant_id = $1::uuid
+                  AND config->>'_environment' = $3
+                  AND id = $2
                 RETURNING id, tenant_id, name, connector_type, auth_type,
                           config, credentials, status,
                           last_tested_at, last_test_status, last_test_error,
@@ -600,6 +637,7 @@ impl Storage {
             )
             .bind(tenant_id)
             .bind(connection_id)
+            .bind(environment)
             .bind(name)
             .bind(config)
             .fetch_one(&self.pool)
@@ -613,15 +651,19 @@ impl Storage {
     pub async fn delete_connection(
         &self,
         tenant_id: &str,
+        environment: &str,
         connection_id: Uuid,
     ) -> Result<(), StorageError> {
         let result = sqlx::query(
             r#"
             DELETE FROM connections
-            WHERE tenant_id = $1::uuid AND id = $2
+            WHERE tenant_id = $1::uuid
+              AND config->>'_environment' = $2
+              AND id = $3
             "#,
         )
         .bind(tenant_id)
+        .bind(environment)
         .bind(connection_id)
         .execute(&self.pool)
         .await?;
@@ -639,6 +681,8 @@ impl Storage {
     /// Update connection test status
     pub async fn update_connection_test_status(
         &self,
+        tenant_id: &str,
+        environment: &str,
         connection_id: Uuid,
         status: &str,
         test_status: &str,
@@ -651,12 +695,16 @@ impl Storage {
                 last_test_status = $3, last_test_error = $4,
                 updated_at = NOW()
             WHERE id = $1
+              AND tenant_id = $5::uuid
+              AND config->>'_environment' = $6
             "#,
         )
         .bind(connection_id)
         .bind(status)
         .bind(test_status)
         .bind(test_error)
+        .bind(tenant_id)
+        .bind(environment)
         .execute(&self.pool)
         .await?;
 
@@ -803,10 +851,7 @@ impl Storage {
     }
 
     /// Update discovery run status to scanning
-    pub async fn mark_discovery_scanning(
-        &self,
-        run_id: Uuid,
-    ) -> Result<(), StorageError> {
+    pub async fn mark_discovery_scanning(&self, run_id: Uuid) -> Result<(), StorageError> {
         sqlx::query(
             r#"
             UPDATE discovery_runs SET status = 'scanning' WHERE id = $1
@@ -824,26 +869,35 @@ impl Storage {
     // =============================================================================
 
     pub async fn count_integrations(&self, tenant_id: &str) -> Result<i64, StorageError> {
-        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM integrations WHERE tenant_id = $1")
-            .bind(tenant_id)
-            .fetch_one(&self.pool)
-            .await?;
+        let (count,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM integrations WHERE tenant_id = $1")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
         Ok(count)
     }
 
-    pub async fn count_connections(&self, tenant_id: &str) -> Result<i64, StorageError> {
-        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM connections WHERE tenant_id = $1")
+    pub async fn count_connections(
+        &self,
+        tenant_id: &str,
+        environment: &str,
+    ) -> Result<i64, StorageError> {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM connections WHERE tenant_id = $1 AND config->>'_environment' = $2",
+        )
             .bind(tenant_id)
+            .bind(environment)
             .fetch_one(&self.pool)
             .await?;
         Ok(count)
     }
 
     pub async fn count_playbooks(&self, tenant_id: &str) -> Result<i64, StorageError> {
-        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM playbooks WHERE tenant_id = $1::uuid")
-            .bind(tenant_id)
-            .fetch_one(&self.pool)
-            .await?;
+        let (count,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM playbooks WHERE tenant_id = $1::uuid")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
         Ok(count)
     }
 

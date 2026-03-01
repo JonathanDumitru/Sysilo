@@ -5,7 +5,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Headers used for passing tenant context from API Gateway
@@ -14,6 +14,7 @@ const USER_ID_HEADER: &str = "x-user-id";
 const USER_ROLE_HEADER: &str = "x-user-role";
 const PLAN_NAME_HEADER: &str = "x-plan-name";
 const PLAN_LIMITS_HEADER: &str = "x-plan-limits";
+const ENVIRONMENT_HEADER: &str = "x-environment";
 
 /// Plan limits passed from API Gateway
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -34,7 +35,9 @@ pub struct PlanLimits {
     pub audit_retention_days: i64,
 }
 
-fn default_unlimited() -> i64 { -1 }
+fn default_unlimited() -> i64 {
+    -1
+}
 
 impl PlanLimits {
     pub fn is_unlimited(&self, val: i64) -> bool {
@@ -48,6 +51,7 @@ pub struct TenantContext {
     pub tenant_id: Uuid,
     pub user_id: Option<Uuid>,
     pub user_role: Option<String>,
+    pub environment: String,
     pub plan_name: String,
     pub plan_limits: PlanLimits,
 }
@@ -89,6 +93,17 @@ pub fn extract_tenant_context(headers: &HeaderMap) -> Result<TenantContext, Tena
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
+    let environment = headers
+        .get(ENVIRONMENT_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .map(str::to_lowercase)
+        .filter(|env| matches!(env.as_str(), "dev" | "staging" | "prod"))
+        .ok_or_else(|| TenantContextError {
+            error: "missing_environment_context".to_string(),
+            message: format!("Missing or invalid {} header", ENVIRONMENT_HEADER),
+        })?;
+
     // Extract plan name (optional, defaults to "trial")
     let plan_name = headers
         .get(PLAN_NAME_HEADER)
@@ -107,6 +122,7 @@ pub fn extract_tenant_context(headers: &HeaderMap) -> Result<TenantContext, Tena
         tenant_id,
         user_id,
         user_role,
+        environment,
         plan_name,
         plan_limits,
     })
@@ -144,6 +160,7 @@ pub async fn optional_tenant_context_middleware(
             tenant_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
             user_id: None,
             user_role: Some("admin".to_string()),
+            environment: "dev".to_string(),
             plan_name: "enterprise".to_string(),
             plan_limits: PlanLimits::default(),
         }

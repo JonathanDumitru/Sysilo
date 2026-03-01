@@ -1,5 +1,12 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import {
+  EnvironmentSwitcher,
+  getStoredEnvironment,
+  PRODUCTION_CONFIRMATION_KEY,
+  PRODUCTION_REASON_KEY,
+} from './components/EnvironmentSwitcher';
 import { DashboardPage } from './pages/DashboardPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
@@ -33,8 +40,34 @@ import { AIAssistButton } from './components/ai';
 import { PricingPage } from './pages/PricingPage';
 
 function App() {
+  useEffect(() => {
+    const nativeFetch = window.fetch.bind(window);
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      headers.set('x-environment', getStoredEnvironment());
+
+      const productionConfirmed = sessionStorage.getItem(PRODUCTION_CONFIRMATION_KEY);
+      const changeReason = sessionStorage.getItem(PRODUCTION_REASON_KEY);
+      if (productionConfirmed === 'true' && changeReason) {
+        headers.set('x-production-confirmed', 'true');
+        headers.set('x-change-reason', changeReason);
+      }
+
+      return nativeFetch(input, {
+        ...init,
+        headers,
+      });
+    };
+
+    return () => {
+      window.fetch = nativeFetch;
+    };
+  }, []);
+
   return (
     <>
+      <EnvironmentSwitcher />
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     Extension, Json,
 };
 use serde::{Deserialize, Serialize};
@@ -80,7 +80,54 @@ fn parse_connector_type(raw: &str) -> Result<ConnectorType, ApiError> {
     serde_json::from_value(serde_json::json!(raw)).map_err(|e| ApiError {
         error: "invalid_connector_type".to_string(),
         message: e.to_string(),
+        status: Some(StatusCode::BAD_REQUEST),
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
     })
+}
+
+fn enforce_production_guard(headers: &HeaderMap, environment: &str) -> Result<(), ApiError> {
+    if environment != "prod" {
+        return Ok(());
+    }
+
+    let confirmed = headers
+        .get("x-production-confirmed")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    if !confirmed {
+        return Err(ApiError {
+            error: "production_confirmation_required".to_string(),
+            message: "Production mutation requires explicit confirmation".to_string(),
+            status: Some(StatusCode::FORBIDDEN),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
+        });
+    }
+
+    let reason = headers
+        .get("x-change-reason")
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .unwrap_or("");
+    if reason.is_empty() {
+        return Err(ApiError {
+            error: "production_change_reason_required".to_string(),
+            message: "Production mutation requires a non-empty change reason".to_string(),
+            status: Some(StatusCode::BAD_REQUEST),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
+        });
+    }
+
+    Ok(())
 }
 
 // === Handlers ===
@@ -91,15 +138,13 @@ pub async fn list_connections(
     Extension(tenant): Extension<TenantContext>,
 ) -> Result<Json<ConnectionListResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
 
     let rows = state
         .storage
-        .list_connections(&tenant_id)
+        .list_connections(&tenant_id, &environment)
         .await
-        .map_err(|e| ApiError {
-            error: "database_error".to_string(),
-            message: e.to_string(),
-        })?;
+        .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
 
     let total = rows.len();
     let connections: Vec<ConnectionResponse> = rows.into_iter().map(row_to_response).collect();
@@ -111,17 +156,29 @@ pub async fn list_connections(
 pub async fn create_connection(
     State(state): State<Arc<AppState>>,
     Extension(tenant): Extension<TenantContext>,
+    headers: HeaderMap,
     Json(req): Json<CreateConnectionRequest>,
 ) -> Result<(StatusCode, Json<ConnectionResponse>), ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
     let limits = &tenant.plan_limits;
+
+    enforce_production_guard(&headers, &environment)?;
 
     // Check connection count limit
     if !limits.is_unlimited(limits.max_connections) {
-        let count = state.storage.count_connections(&tenant_id).await
+        let count = state
+            .storage
+            .count_connections(&tenant_id, &environment)
+            .await
             .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
         if count >= limits.max_connections {
-            return Err(ApiError::limit_reached("connections", count, limits.max_connections, &tenant.plan_name));
+            return Err(ApiError::limit_reached(
+                "connections",
+                count,
+                limits.max_connections,
+                &tenant.plan_name,
+            ));
         }
     }
 
@@ -129,13 +186,17 @@ pub async fn create_connection(
         error: "validation_error".to_string(),
         message: e,
         status: Some(StatusCode::BAD_REQUEST),
-        resource: None, current: None, limit: None, plan: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
     })?;
 
     let row = state
         .storage
         .create_connection(
             &tenant_id,
+            &environment,
             &req.name,
             &req.connector_type.to_string(),
             &req.auth_type.to_string(),
@@ -143,10 +204,7 @@ pub async fn create_connection(
             req.credentials,
         )
         .await
-        .map_err(|e| ApiError {
-            error: "database_error".to_string(),
-            message: e.to_string(),
-        })?;
+        .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
 
     tracing::info!(
         connection_id = %row.id,
@@ -164,14 +222,20 @@ pub async fn get_connection(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
 
     let row = state
         .storage
-        .get_connection(&tenant_id, id)
+        .get_connection_in_environment(&tenant_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+            status: Some(StatusCode::NOT_FOUND),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
         })?;
 
     Ok(Json(row_to_response(row)))
@@ -181,19 +245,28 @@ pub async fn get_connection(
 pub async fn update_connection(
     State(state): State<Arc<AppState>>,
     Extension(tenant): Extension<TenantContext>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateConnectionRequest>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
+
+    enforce_production_guard(&headers, &environment)?;
 
     // Get existing to validate config against its connector_type
     let existing = state
         .storage
-        .get_connection(&tenant_id, id)
+        .get_connection_in_environment(&tenant_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+            status: Some(StatusCode::NOT_FOUND),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
         })?;
 
     let connector_type = parse_connector_type(&existing.connector_type)?;
@@ -201,16 +274,25 @@ pub async fn update_connection(
     validate_config(&connector_type, &req.config).map_err(|e| ApiError {
         error: "validation_error".to_string(),
         message: e,
+        status: Some(StatusCode::BAD_REQUEST),
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
     })?;
 
     let row = state
         .storage
-        .update_connection(&tenant_id, id, &req.name, req.config, req.credentials)
+        .update_connection(
+            &tenant_id,
+            &environment,
+            id,
+            &req.name,
+            req.config,
+            req.credentials,
+        )
         .await
-        .map_err(|e| ApiError {
-            error: "database_error".to_string(),
-            message: e.to_string(),
-        })?;
+        .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
 
     Ok(Json(row_to_response(row)))
 }
@@ -219,17 +301,26 @@ pub async fn update_connection(
 pub async fn delete_connection(
     State(state): State<Arc<AppState>>,
     Extension(tenant): Extension<TenantContext>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
+
+    enforce_production_guard(&headers, &environment)?;
 
     state
         .storage
-        .delete_connection(&tenant_id, id)
+        .delete_connection(&tenant_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+            status: Some(StatusCode::NOT_FOUND),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
         })?;
 
     tracing::info!(connection_id = %id, "Connection deleted");
@@ -241,17 +332,26 @@ pub async fn delete_connection(
 pub async fn test_connection(
     State(state): State<Arc<AppState>>,
     Extension(tenant): Extension<TenantContext>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConnectionResponse>, ApiError> {
     let tenant_id = tenant.tenant_id.to_string();
+    let environment = tenant.environment.clone();
+
+    enforce_production_guard(&headers, &environment)?;
 
     let conn = state
         .storage
-        .get_connection(&tenant_id, id)
+        .get_connection_in_environment(&tenant_id, &environment, id)
         .await
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+            status: Some(StatusCode::NOT_FOUND),
+            resource: None,
+            current: None,
+            limit: None,
+            plan: None,
         })?;
 
     // Validate config shape as a basic "test"
@@ -265,22 +365,23 @@ pub async fn test_connection(
 
     state
         .storage
-        .update_connection_test_status(id, status, test_status, test_error.as_deref())
+        .update_connection_test_status(
+            &tenant_id,
+            &environment,
+            id,
+            status,
+            test_status,
+            test_error.as_deref(),
+        )
         .await
-        .map_err(|e| ApiError {
-            error: "database_error".to_string(),
-            message: e.to_string(),
-        })?;
+        .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
 
     // Re-fetch to get updated fields
     let row = state
         .storage
-        .get_connection(&tenant_id, id)
+        .get_connection_in_environment(&tenant_id, &environment, id)
         .await
-        .map_err(|e| ApiError {
-            error: "database_error".to_string(),
-            message: e.to_string(),
-        })?;
+        .map_err(|e| ApiError::internal("database_error", e.to_string()))?;
 
     Ok(Json(row_to_response(row)))
 }
