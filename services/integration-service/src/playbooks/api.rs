@@ -132,11 +132,21 @@ fn playbook_row_to_response(row: PlaybookRow) -> Result<PlaybookResponse, ApiErr
     let steps: Vec<Step> = serde_json::from_value(row.steps).map_err(|e| ApiError {
         error: "invalid_data".to_string(),
         message: format!("Failed to parse steps: {}", e),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let variables: Vec<Variable> = serde_json::from_value(row.variables).map_err(|e| ApiError {
         error: "invalid_data".to_string(),
         message: format!("Failed to parse variables: {}", e),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     Ok(PlaybookResponse {
@@ -174,6 +184,11 @@ fn run_row_to_response(row: PlaybookRunRow) -> Result<PlaybookRunResponse, ApiEr
         serde_json::from_value(row.step_states).map_err(|e| ApiError {
             error: "invalid_data".to_string(),
             message: format!("Failed to parse step_states: {}", e),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok(PlaybookRunResponse {
@@ -215,6 +230,11 @@ pub async fn list_playbooks(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let playbooks: Vec<PlaybookSummary> = rows.into_iter().map(playbook_row_to_summary).collect();
@@ -236,6 +256,11 @@ pub async fn create_playbook(
         .map_err(|e| ApiError {
             error: "serialization_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?
         .as_str()
         .unwrap_or("manual")
@@ -244,11 +269,21 @@ pub async fn create_playbook(
     let steps = serde_json::to_value(&req.steps).map_err(|e| ApiError {
         error: "invalid_steps".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let variables = serde_json::to_value(&req.variables).map_err(|e| ApiError {
         error: "invalid_variables".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let row = state
@@ -265,6 +300,11 @@ pub async fn create_playbook(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = playbook_row_to_response(row)?;
@@ -286,6 +326,11 @@ pub async fn get_playbook(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = playbook_row_to_response(row)?;
@@ -306,6 +351,11 @@ pub async fn update_playbook(
         .map_err(|e| ApiError {
             error: "serialization_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?
         .as_str()
         .unwrap_or("manual")
@@ -314,11 +364,21 @@ pub async fn update_playbook(
     let steps = serde_json::to_value(&req.steps).map_err(|e| ApiError {
         error: "invalid_steps".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let variables = serde_json::to_value(&req.variables).map_err(|e| ApiError {
         error: "invalid_variables".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let row = state
@@ -336,6 +396,11 @@ pub async fn update_playbook(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = playbook_row_to_response(row)?;
@@ -357,6 +422,11 @@ pub async fn delete_playbook(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -383,12 +453,22 @@ pub async fn run_playbook(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Parse steps to create initial step states
     let steps: Vec<Step> = serde_json::from_value(playbook.steps).map_err(|e| ApiError {
         error: "invalid_playbook".to_string(),
         message: format!("Failed to parse playbook steps: {}", e),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     // Initialize step states (all pending)
@@ -407,6 +487,11 @@ pub async fn run_playbook(
     let step_states_json = serde_json::to_value(&initial_step_states).map_err(|e| ApiError {
         error: "serialization_error".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let row = state
@@ -416,6 +501,11 @@ pub async fn run_playbook(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Dispatch starting steps to Kafka (if producer available)
@@ -471,6 +561,11 @@ pub async fn list_playbook_runs(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let runs: Vec<PlaybookRunSummary> = rows.into_iter().map(run_row_to_summary).collect();
@@ -494,6 +589,11 @@ pub async fn get_playbook_run(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = run_row_to_response(row)?;
@@ -517,6 +617,11 @@ pub async fn approve_run(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Check if the run is waiting for approval
@@ -527,6 +632,11 @@ pub async fn approve_run(
                 "Run is in '{}' state, expected 'waiting_approval'",
                 row.status
             ),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         });
     }
 
@@ -538,12 +648,22 @@ pub async fn approve_run(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let steps: Vec<crate::playbooks::Step> = serde_json::from_value(playbook.steps.clone())
         .map_err(|e| ApiError {
             error: "parse_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Parse step states to find the approval step that's currently running
@@ -551,6 +671,11 @@ pub async fn approve_run(
         serde_json::from_value(row.step_states.clone()).map_err(|e| ApiError {
             error: "parse_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Find the running approval step and its next steps
@@ -586,6 +711,11 @@ pub async fn approve_run(
         serde_json::to_value(&step_states).map_err(|e| ApiError {
             error: "serialize_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Update run status
@@ -597,6 +727,11 @@ pub async fn approve_run(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Dispatch next steps if Kafka producer available
@@ -642,6 +777,11 @@ pub async fn approve_run(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = run_row_to_response(updated_row)?;
@@ -665,6 +805,11 @@ pub async fn reject_run(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Check if the run is waiting for approval
@@ -675,6 +820,11 @@ pub async fn reject_run(
                 "Run is in '{}' state, expected 'waiting_approval'",
                 row.status
             ),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         });
     }
 
@@ -686,6 +836,11 @@ pub async fn reject_run(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     tracing::info!(
@@ -703,6 +858,11 @@ pub async fn reject_run(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let response = run_row_to_response(updated_row)?;

@@ -76,3 +76,36 @@ Phase 1 is **not yet fully achieved**. Core pieces are implemented, but critical
 
 ## Overall Assessment
 Phase 1 contains substantial implementation progress but does not yet satisfy roadmap-level success criteria with production confidence. The highest-priority blockers are endpoint routing/exposure for identity flows and consistent enforcement topology (gateway vs direct service access).
+
+## 01-08 Gap-Closure Verification Rerun (2026-03-01)
+
+### Tooling and Script Evidence
+- Added `scripts/verify/check_go_toolchain.sh` (preflight with explicit PASS/BLOCKED/FAIL outcomes).
+- Added `scripts/verify/phase1_gap_closure.sh` (single-command verification runner for gateway, integration-service, and frontend targets).
+- Added root `package.json` script: `verify:phase1:gaps`.
+
+### Command Results
+1. `bash scripts/verify/check_go_toolchain.sh`
+- Result: **BLOCKED** (exit `2`)
+- Exact blocker:
+  - `BLOCKED: Go toolchain is not installed or not in PATH.`
+  - `Install Go 1.22+ and re-run this check.`
+
+2. `cargo test --manifest-path services/integration-service/Cargo.toml --no-fail-fast`
+- Result: **PASS**
+- Evidence: `test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out`
+- Note: compile blocker from `ApiError` initializer mismatch in `src/api/mod.rs` and `src/playbooks/api.rs` is resolved.
+
+3. `bash scripts/verify/phase1_gap_closure.sh`
+- Result: **BLOCKED** (exit `2`)
+- Breakdown:
+  - Go preflight: **BLOCKED**
+  - Gateway tests: **BLOCKED** (skipped due missing `go`)
+  - Integration targeted tests (`connector_spec_contract`): **PASS**
+  - Frontend targeted tests (`vitest --passWithNoTests ...`): **PASS** with `No test files found, exiting with code 0`
+  - Final runner status: `PHASE1_GAP_CLOSURE=BLOCKED`
+
+### Residual Risks and Ownership
+- External blocker: local Go toolchain is not installed (developer workstation setup gap).
+- Verification completeness risk: frontend selectors currently rely on `--passWithNoTests`, so route/contract checks are not yet asserting behavior via concrete test files.
+- Phase 1 cross-service verification is now reproducible and scriptable, but remains partially blocked until Go is installed and gateway tests execute.

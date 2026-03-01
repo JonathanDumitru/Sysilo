@@ -133,6 +133,11 @@ pub async fn list_integrations(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let integrations: Vec<IntegrationSummary> = rows
@@ -198,6 +203,11 @@ pub async fn create_integration(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok((
@@ -228,6 +238,11 @@ pub async fn get_integration(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok(Json(IntegrationResponse {
@@ -280,6 +295,11 @@ pub async fn run_integration(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Parse the definition
@@ -287,6 +307,11 @@ pub async fn run_integration(
         serde_json::from_value(integration.definition.clone()).map_err(|e| ApiError {
             error: "invalid_definition".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Start the run via the engine
@@ -297,6 +322,11 @@ pub async fn run_integration(
         .map_err(|e| ApiError {
             error: "execution_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok((
@@ -343,6 +373,11 @@ pub async fn get_run(
         .map_err(|e| ApiError {
             error: "not_found".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     Ok(Json(RunResponse {
@@ -364,6 +399,11 @@ pub async fn cancel_run(
     let run = state.engine.cancel_run(id).await.map_err(|e| ApiError {
         error: "cancel_error".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     Ok(Json(RunResponse {
@@ -453,6 +493,11 @@ pub async fn run_discovery(
         .map_err(|e| ApiError {
             error: "connection_not_found".to_string(),
             message: format!("Connection {} not found: {}", req.connection_id, e),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     // Create discovery run record for status tracking (with task_id for result matching)
@@ -463,6 +508,11 @@ pub async fn run_discovery(
         .map_err(|e| ApiError {
             error: "database_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
     let run_id = discovery_run.id;
@@ -501,6 +551,11 @@ pub async fn run_discovery(
         producer.send_task(&task).await.map_err(|e| ApiError {
             error: "dispatch_error".to_string(),
             message: e.to_string(),
+        status: None,
+        resource: None,
+        current: None,
+        limit: None,
+        plan: None,
         })?;
 
         // Mark as scanning now that the task is dispatched
@@ -552,6 +607,11 @@ pub async fn list_discovery_runs(
     .map_err(|e| ApiError {
         error: "database_error".to_string(),
         message: e.to_string(),
+    status: None,
+    resource: None,
+    current: None,
+    limit: None,
+    plan: None,
     })?;
 
     let runs = rows

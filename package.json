@@ -1,0 +1,7 @@
+{
+  "name": "sysilo",
+  "private": true,
+  "scripts": {
+    "verify:phase1:gaps": "bash scripts/verify/phase1_gap_closure.sh"
+  }
+}
