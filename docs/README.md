@@ -16,6 +16,7 @@ This is the working documentation set derived from the platform plan at
 - Capabilities: `docs/capabilities.md`
 - Development onboarding: `docs/development/onboarding.md`
 - Development configuration: `docs/development/configuration.md`
+- Development application surface: `docs/development/application-surface.md`
 - Architecture
   - System context: `docs/architecture/system-context.md`
   - Control plane: `docs/architecture/control-plane.md`

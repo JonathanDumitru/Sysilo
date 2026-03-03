@@ -67,11 +67,19 @@ npm run dev
 
 The dev server defaults to `http://localhost:3000`.
 
+Frontend API base:
+
+- The web app uses `VITE_API_URL` (default: `http://localhost:8082`).
+- Example: `export VITE_API_URL=http://localhost:8082` before `npm run dev`.
+- Current backend endpoints are split across services; see
+  `docs/development/application-surface.md` for route-to-service mapping and
+  local routing constraints.
+
 ## Local discovery testing
 
 There are two paths:
 
-1. Mock discovery (dev only). The UI calls `POST /dev/mock-discovery` on the integration-service, bypassing Kafka and writing assets directly to the Asset Service. The modal uses mock mode by default. To exercise real discovery, set `USE_MOCK_DISCOVERY = false` in `packages/frontend/web-app/src/components/DiscoveryModal.tsx`.
+1. Mock discovery (dev only). The UI calls `POST /dev/mock-discovery` on the integration-service, bypassing Kafka and writing assets directly to the Asset Service. The modal currently defaults to real discovery (`USE_MOCK_DISCOVERY = false`). To force mock mode, set `USE_MOCK_DISCOVERY = true` in `packages/frontend/web-app/src/components/DiscoveryModal.tsx`.
 2. Real discovery. The UI calls `POST /discovery/run`, which dispatches a `discovery` task to Kafka. This requires Kafka and an agent capable of discovery tasks.
 
 Example mock request:
@@ -86,7 +94,7 @@ curl -X POST http://localhost:8082/dev/mock-discovery \
 Notes:
 
 - Mock discovery requires the Asset Service to be running and `CONSUMER_ASSET_SERVICE_URL` pointing at it (or the API gateway).
-- The connection list in the modal is stubbed in `packages/frontend/web-app/src/services/discovery.ts` until the connections API is implemented.
+- The connection list in the discovery modal is backed by the real connections API.
 - Ensure tenant IDs match between discovery and asset queries. The defaults live in `packages/frontend/web-app/src/services/discovery.ts` and `packages/frontend/web-app/src/services/assets.ts`.
 
 ## Connector SDK (TypeScript)

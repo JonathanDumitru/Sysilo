@@ -119,6 +119,21 @@ Environment overrides:
 | `SYSILO_JWT_SECRET` | `dev-secret-change-in-production` | Overrides `auth.jwt_secret` |
 | `SYSILO_LOG_LEVEL` | `info` | Overrides `logging.level` |
 
+## Frontend (Vite web app)
+
+The frontend uses one API base URL:
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `VITE_API_URL` | `http://localhost:8082` | Base URL used by `apiFetch` in `packages/frontend/web-app/src/services/api.ts` |
+
+Important:
+
+- The current implementation spans multiple backend services while the frontend
+  uses a single base URL.
+- For endpoint mapping and local routing constraints, see
+  `docs/development/application-surface.md`.
+
 ## Environment variables (Rust services)
 
 ### Integration service (`services/integration-service`)
