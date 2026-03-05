@@ -48,6 +48,7 @@ const operationsNavigation = [
 const governanceNavigation = [
   { name: 'Governance', href: '/governance', icon: Shield },
   { name: 'Policies', href: '/governance/policies', icon: FileCheck },
+  { name: 'Rulesets', href: '/governance/rulesets', icon: Layers },
   { name: 'Standards', href: '/governance/standards', icon: BookOpen },
   { name: 'Approvals', href: '/governance/approvals', icon: CheckSquare },
   { name: 'Audit Log', href: '/governance/audit', icon: FileText },

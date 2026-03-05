@@ -17,6 +17,7 @@ mod audit;
 mod compliance;
 mod kafka;
 mod policies;
+mod rulesets;
 mod standards;
 
 use crate::approvals::ApprovalsService;
@@ -24,6 +25,7 @@ use crate::audit::AuditService;
 use crate::compliance::ComplianceService;
 use crate::kafka::{GovernanceEventProducer, KafkaConfig};
 use crate::policies::PoliciesService;
+use crate::rulesets::RulesetsService;
 use crate::standards::StandardsService;
 
 /// Application state shared across handlers
@@ -33,6 +35,7 @@ pub struct AppState {
     pub approvals: ApprovalsService,
     pub audit: AuditService,
     pub compliance: ComplianceService,
+    pub rulesets: RulesetsService,
     pub events: Option<GovernanceEventProducer>,
 }
 
@@ -68,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
     let approvals = ApprovalsService::new(&database_url).await?;
     let audit = AuditService::new(&database_url).await?;
     let compliance = ComplianceService::new(&database_url).await?;
+    let rulesets = RulesetsService::new(&database_url).await?;
 
     let state = Arc::new(AppState {
         policies,
@@ -75,6 +79,7 @@ async fn main() -> anyhow::Result<()> {
         approvals,
         audit,
         compliance,
+        rulesets,
         events,
     });
 
@@ -98,6 +103,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/policies/evaluate", post(api::evaluate_policies))
         .route("/policies/violations", get(api::list_violations))
         .route("/policies/violations/:id/resolve", post(api::resolve_violation))
+        // Rulesets endpoints
+        .route("/rulesets", get(api::list_rulesets))
+        .route("/rulesets", post(api::create_ruleset))
+        .route("/rulesets/:id", get(api::get_ruleset))
+        .route("/rulesets/:id", put(api::update_ruleset))
+        .route("/rulesets/:id", delete(api::delete_ruleset))
+        .route("/rulesets/:id/evaluate", post(api::evaluate_ruleset))
         // Approvals endpoints
         .route("/approvals/workflows", get(api::list_workflows))
         .route("/approvals/workflows", post(api::create_workflow))

@@ -373,7 +373,7 @@ impl PoliciesService {
     }
 
     /// Evaluate a single policy
-    fn evaluate_single_policy(
+    pub fn evaluate_single_policy(
         &self,
         policy: &Policy,
         resource_data: &serde_json::Value,

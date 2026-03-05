@@ -12,6 +12,7 @@ use std::sync::Arc;
 use crate::AppState;
 use crate::standards::{CreateStandardRequest, UpdateStandardRequest};
 use crate::policies::{CreatePolicyRequest, UpdatePolicyRequest, EvaluatePoliciesRequest};
+use crate::rulesets::{CreateRulesetRequest, UpdateRulesetRequest};
 use crate::approvals::{CreateWorkflowRequest, UpdateWorkflowRequest, CreateApprovalRequestInput, DecideRequest};
 use crate::audit::AuditQueryParams;
 
@@ -350,6 +351,124 @@ pub async fn resolve_violation(
     match state.policies.resolve_violation(tenant_id, id, user_id, req.resolution_note).await {
         Ok(Some(violation)) => (StatusCode::OK, Json(ApiResponse::success(violation))).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Violation not found or already resolved"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Rulesets Handlers
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ListRulesetsParams {
+    pub scope: Option<String>,
+    pub enabled_only: Option<bool>,
+}
+
+pub async fn list_rulesets(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Query(params): Query<ListRulesetsParams>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.rulesets.list_rulesets(tenant_id, params.scope, params.enabled_only.unwrap_or(false)).await {
+        Ok(rulesets) => (StatusCode::OK, Json(ApiResponse::success(rulesets))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn get_ruleset(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.rulesets.get_ruleset_with_policies(tenant_id, id).await {
+        Ok(Some(ruleset)) => (StatusCode::OK, Json(ApiResponse::success(ruleset))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Ruleset not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn create_ruleset(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<CreateRulesetRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    let user_id = get_user_id(&headers);
+
+    match state.rulesets.create_ruleset(tenant_id, req, user_id).await {
+        Ok(ruleset) => (StatusCode::CREATED, Json(ApiResponse::success(ruleset))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn update_ruleset(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateRulesetRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.rulesets.update_ruleset(tenant_id, id, req).await {
+        Ok(Some(ruleset)) => (StatusCode::OK, Json(ApiResponse::success(ruleset))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Ruleset not found"))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn delete_ruleset(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.rulesets.delete_ruleset(tenant_id, id).await {
+        Ok(true) => (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({"deleted": true})))).into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Ruleset not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EvaluateRulesetRequest {
+    pub resource_data: serde_json::Value,
+}
+
+pub async fn evaluate_ruleset(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<EvaluateRulesetRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.rulesets.evaluate_ruleset(tenant_id, id, &req.resource_data, &state.policies).await {
+        Ok(results) => (StatusCode::OK, Json(ApiResponse::success(results))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
     }
 }

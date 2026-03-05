@@ -25,6 +25,7 @@ import { PlaybookRunDetailPage } from './pages/PlaybookRunDetailPage';
 // Governance Center
 import { GovernanceDashboardPage } from './pages/GovernanceDashboardPage';
 import { PoliciesPage } from './pages/PoliciesPage';
+import { RulesetsPage } from './pages/RulesetsPage';
 import { StandardsPage } from './pages/StandardsPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
@@ -90,6 +91,7 @@ function App() {
           {/* Governance Center */}
           <Route path="governance" element={<GovernanceDashboardPage />} />
           <Route path="governance/policies" element={<PoliciesPage />} />
+          <Route path="governance/rulesets" element={<RulesetsPage />} />
           <Route path="governance/standards" element={<StandardsPage />} />
           <Route path="governance/approvals" element={<ApprovalsPage />} />
           <Route path="governance/audit" element={<AuditLogPage />} />
