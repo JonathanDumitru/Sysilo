@@ -261,20 +261,32 @@ impl RulesetsService {
             .execute(&self.pool)
             .await?;
 
-        // Insert new associations
-        for (position, policy_id) in policy_ids.iter().enumerate() {
-            sqlx::query(
-                r#"
-                INSERT INTO ruleset_policies (ruleset_id, policy_id, position)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (ruleset_id, policy_id) DO NOTHING
-                "#
-            )
-            .bind(ruleset_id)
-            .bind(policy_id)
-            .bind(position as i32)
-            .execute(&self.pool)
-            .await?;
+        // Batch insert new associations
+        if !policy_ids.is_empty() {
+            let mut query = String::from(
+                "INSERT INTO ruleset_policies (ruleset_id, policy_id, position) VALUES "
+            );
+            let mut first = true;
+            for (i, _) in policy_ids.iter().enumerate() {
+                if !first {
+                    query.push_str(", ");
+                }
+                let p_base = i * 3;
+                query.push_str(&format!(
+                    "(${}, ${}, ${})",
+                    p_base + 1,
+                    p_base + 2,
+                    p_base + 3
+                ));
+                first = false;
+            }
+            query.push_str(" ON CONFLICT (ruleset_id, policy_id) DO NOTHING");
+
+            let mut q = sqlx::query(&query);
+            for (position, policy_id) in policy_ids.iter().enumerate() {
+                q = q.bind(ruleset_id).bind(policy_id).bind(position as i32);
+            }
+            q.execute(&self.pool).await?;
         }
 
         Ok(())
@@ -288,16 +300,26 @@ impl RulesetsService {
         resource_data: &serde_json::Value,
         policies_service: &PoliciesService,
     ) -> Result<Vec<PolicyEvaluationResult>> {
-        let policy_ids = self.get_policy_ids(ruleset_id).await?;
+        // Fetch all policies in the ruleset in a single query
+        let policies = sqlx::query_as::<_, crate::policies::Policy>(
+            r#"
+            SELECT p.id, p.tenant_id, p.name, p.description, p.rego_policy, p.scope,
+                   p.enforcement_mode, p.severity, p.enabled, p.created_at, p.updated_at
+            FROM policies p
+            INNER JOIN ruleset_policies rp ON rp.policy_id = p.id
+            WHERE rp.ruleset_id = $1 AND p.tenant_id = $2 AND p.enabled = true
+            ORDER BY rp.position, rp.added_at
+            "#
+        )
+        .bind(ruleset_id)
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
 
         let mut results = Vec::new();
-        for policy_id in policy_ids {
-            if let Some(policy) = policies_service.get_policy(tenant_id, policy_id).await? {
-                if policy.enabled {
-                    let result = policies_service.evaluate_single_policy(&policy, resource_data)?;
-                    results.push(result);
-                }
-            }
+        for policy in &policies {
+            let result = policies_service.evaluate_single_policy(policy, resource_data)?;
+            results.push(result);
         }
 
         Ok(results)
