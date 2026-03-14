@@ -9,8 +9,10 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::catalog::{Entity, EntityType, Schema};
-use crate::lineage::{LineageEdge, LineageGraph};
-use crate::quality::{QualityRule, QualityScore, QualityIssue};
+use crate::lineage::{LineageEdge, LineageEdgeType, LineageGraph, LineageNode, LineageQueryParams};
+use crate::quality::{
+    QualityRule, QualityRuleInput, QualityScore, QualityCheckResult, QualityIssue, PiiScanResult,
+};
 
 // ============================================================================
 // Health Endpoints
@@ -147,70 +149,109 @@ pub async fn get_entity_schema(
 #[derive(Deserialize)]
 pub struct GetLineageQuery {
     pub tenant_id: Uuid,
-    pub depth: Option<i32>,
     pub direction: Option<String>,
+    pub depth: Option<i64>,
+    pub entity_type: Option<String>,
 }
 
+/// GET /lineage/:entity_id - Get lineage graph for an entity
 pub async fn get_lineage(
     State(state): State<Arc<AppState>>,
-    Path(entity_id): Path<Uuid>,
+    Path(entity_id): Path<String>,
     Query(query): Query<GetLineageQuery>,
 ) -> Result<Json<LineageGraph>, StatusCode> {
-    let depth = query.depth.unwrap_or(3);
-    let direction = query.direction.as_deref().unwrap_or("both");
+    let params = LineageQueryParams {
+        entity_id,
+        direction: query.direction,
+        depth: query.depth,
+        entity_type: query.entity_type,
+    };
 
-    match state.lineage.get_lineage(query.tenant_id, entity_id, depth, direction).await {
+    match state.lineage.get_lineage(query.tenant_id, params).await {
         Ok(graph) => Ok(Json(graph)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            tracing::error!("Failed to get lineage: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
 #[derive(Deserialize)]
-pub struct AddLineageEdgeRequest {
+pub struct RecordLineageRequest {
     pub tenant_id: Uuid,
-    pub source_entity_id: Uuid,
-    pub target_entity_id: Uuid,
-    pub transformation_type: String,
-    pub transformation_logic: Option<String>,
+    pub source_id: Uuid,
+    pub target_id: Uuid,
+    pub edge_type: String,
+    pub transformation: Option<String>,
     pub integration_id: Option<Uuid>,
 }
 
-pub async fn add_lineage_edge(
+/// POST /lineage - Record a lineage edge
+pub async fn record_lineage(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<AddLineageEdgeRequest>,
+    Json(req): Json<RecordLineageRequest>,
 ) -> Result<Json<LineageEdge>, StatusCode> {
-    match state.lineage.add_edge(
+    let edge_type = LineageEdgeType::from_str(&req.edge_type);
+
+    match state.lineage.record_lineage(
         req.tenant_id,
-        req.source_entity_id,
-        req.target_entity_id,
-        req.transformation_type,
-        req.transformation_logic,
+        req.source_id,
+        req.target_id,
+        edge_type,
+        req.transformation,
         req.integration_id,
     ).await {
         Ok(edge) => Ok(Json(edge)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            tracing::error!("Failed to record lineage: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
-#[derive(Serialize)]
-pub struct ImpactAnalysisResponse {
-    pub entity_id: Uuid,
-    pub downstream_entities: Vec<Entity>,
-    pub affected_integrations: Vec<Uuid>,
+/// GET /lineage/:entity_id/impact - Get downstream impact analysis
+pub async fn get_lineage_impact(
+    State(state): State<Arc<AppState>>,
+    Path(entity_id): Path<String>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<Vec<LineageNode>>, StatusCode> {
+    match state.lineage.get_impact(query.tenant_id, &entity_id).await {
+        Ok(nodes) => Ok(Json(nodes)),
+        Err(e) => {
+            tracing::error!("Failed to get impact analysis: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
-pub async fn get_impact_analysis(
+/// GET /lineage/:entity_id/sources - Get root data sources
+pub async fn get_lineage_sources(
     State(state): State<Arc<AppState>>,
-    Path(entity_id): Path<Uuid>,
+    Path(entity_id): Path<String>,
     Query(query): Query<GetEntityQuery>,
-) -> Result<Json<ImpactAnalysisResponse>, StatusCode> {
-    match state.lineage.get_impact_analysis(query.tenant_id, entity_id).await {
-        Ok((downstream, integrations)) => Ok(Json(ImpactAnalysisResponse {
-            entity_id,
-            downstream_entities: downstream,
-            affected_integrations: integrations,
-        })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+) -> Result<Json<Vec<LineageNode>>, StatusCode> {
+    match state.lineage.get_root_sources(query.tenant_id, &entity_id).await {
+        Ok(nodes) => Ok(Json(nodes)),
+        Err(e) => {
+            tracing::error!("Failed to get root sources: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// DELETE /lineage/:entity_id - Remove a lineage node and its edges
+pub async fn delete_lineage(
+    State(state): State<Arc<AppState>>,
+    Path(entity_id): Path<String>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<StatusCode, StatusCode> {
+    match state.lineage.delete_lineage(query.tenant_id, &entity_id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to delete lineage: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -221,60 +262,173 @@ pub async fn get_impact_analysis(
 #[derive(Deserialize)]
 pub struct ListQualityRulesQuery {
     pub tenant_id: Uuid,
-    pub entity_id: Option<Uuid>,
+    pub dataset_id: Option<Uuid>,
 }
 
+/// GET /quality/rules - List quality rules
 pub async fn list_quality_rules(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ListQualityRulesQuery>,
 ) -> Result<Json<Vec<QualityRule>>, StatusCode> {
-    match state.quality.list_rules(query.tenant_id, query.entity_id).await {
+    match state.quality.list_rules(query.tenant_id, query.dataset_id).await {
         Ok(rules) => Ok(Json(rules)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            tracing::error!("Failed to list quality rules: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
 #[derive(Deserialize)]
 pub struct CreateQualityRuleRequest {
     pub tenant_id: Uuid,
-    pub entity_id: Uuid,
     pub name: String,
-    pub rule_type: String,
-    pub expression: String,
-    pub severity: String,
     pub description: Option<String>,
+    pub rule_type: String,
+    pub dataset_id: Uuid,
+    pub column_name: Option<String>,
+    pub parameters: Option<serde_json::Value>,
+    pub severity: Option<String>,
+    pub enabled: Option<bool>,
 }
 
+/// POST /quality/rules - Create a quality rule
 pub async fn create_quality_rule(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreateQualityRuleRequest>,
 ) -> Result<Json<QualityRule>, StatusCode> {
-    match state.quality.create_rule(
-        req.tenant_id,
-        req.entity_id,
-        req.name,
-        req.rule_type,
-        req.expression,
-        req.severity,
-        req.description,
-    ).await {
+    let input = QualityRuleInput {
+        name: req.name,
+        description: req.description,
+        rule_type: req.rule_type,
+        dataset_id: req.dataset_id,
+        column_name: req.column_name,
+        parameters: req.parameters,
+        severity: req.severity,
+        enabled: req.enabled,
+    };
+
+    match state.quality.create_rule(req.tenant_id, input).await {
         Ok(rule) => Ok(Json(rule)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            tracing::error!("Failed to create quality rule: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
+#[derive(Deserialize)]
+pub struct UpdateQualityRuleRequest {
+    pub tenant_id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub rule_type: String,
+    pub dataset_id: Uuid,
+    pub column_name: Option<String>,
+    pub parameters: Option<serde_json::Value>,
+    pub severity: Option<String>,
+    pub enabled: Option<bool>,
+}
+
+/// PUT /quality/rules/:id - Update a quality rule
+pub async fn update_quality_rule(
+    State(state): State<Arc<AppState>>,
+    Path(rule_id): Path<Uuid>,
+    Json(req): Json<UpdateQualityRuleRequest>,
+) -> Result<Json<QualityRule>, StatusCode> {
+    let input = QualityRuleInput {
+        name: req.name,
+        description: req.description,
+        rule_type: req.rule_type,
+        dataset_id: req.dataset_id,
+        column_name: req.column_name,
+        parameters: req.parameters,
+        severity: req.severity,
+        enabled: req.enabled,
+    };
+
+    match state.quality.update_rule(req.tenant_id, rule_id, input).await {
+        Ok(Some(rule)) => Ok(Json(rule)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to update quality rule: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DeleteQualityRuleQuery {
+    pub tenant_id: Uuid,
+}
+
+/// DELETE /quality/rules/:id - Delete a quality rule
+pub async fn delete_quality_rule(
+    State(state): State<Arc<AppState>>,
+    Path(rule_id): Path<Uuid>,
+    Query(query): Query<DeleteQualityRuleQuery>,
+) -> Result<StatusCode, StatusCode> {
+    match state.quality.delete_rule(query.tenant_id, rule_id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to delete quality rule: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct EvaluateDatasetQuery {
+    pub tenant_id: Uuid,
+}
+
+/// POST /quality/evaluate/:dataset_id - Evaluate all rules for a dataset
+pub async fn evaluate_dataset(
+    State(state): State<Arc<AppState>>,
+    Path(dataset_id): Path<Uuid>,
+    Query(query): Query<EvaluateDatasetQuery>,
+) -> Result<Json<Vec<QualityCheckResult>>, StatusCode> {
+    match state.quality.evaluate_dataset(query.tenant_id, dataset_id).await {
+        Ok(results) => Ok(Json(results)),
+        Err(e) => {
+            tracing::error!("Failed to evaluate dataset: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// GET /quality/score/:dataset_id - Get quality score for a dataset
 pub async fn get_quality_score(
     State(state): State<Arc<AppState>>,
-    Path(entity_id): Path<Uuid>,
+    Path(dataset_id): Path<Uuid>,
     Query(query): Query<GetEntityQuery>,
 ) -> Result<Json<QualityScore>, StatusCode> {
-    match state.quality.get_score(query.tenant_id, entity_id).await {
-        Ok(Some(score)) => Ok(Json(score)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    match state.quality.get_quality_score(query.tenant_id, dataset_id).await {
+        Ok(score) => Ok(Json(score)),
+        Err(e) => {
+            tracing::error!("Failed to get quality score: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
+/// POST /quality/pii-scan/:dataset_id - Run PII detection scan
+pub async fn pii_scan(
+    State(state): State<Arc<AppState>>,
+    Path(dataset_id): Path<Uuid>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<PiiScanResult>, StatusCode> {
+    match state.quality.detect_pii(query.tenant_id, dataset_id).await {
+        Ok(result) => Ok(Json(result)),
+        Err(e) => {
+            tracing::error!("Failed to run PII scan: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// GET /quality/entities/:id/issues - Get quality issues (backward compatibility)
 pub async fn get_quality_issues(
     State(state): State<Arc<AppState>>,
     Path(entity_id): Path<Uuid>,
@@ -282,6 +436,9 @@ pub async fn get_quality_issues(
 ) -> Result<Json<Vec<QualityIssue>>, StatusCode> {
     match state.quality.get_issues(query.tenant_id, entity_id).await {
         Ok(issues) => Ok(Json(issues)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            tracing::error!("Failed to get quality issues: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }

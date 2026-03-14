@@ -14,6 +14,8 @@ from ai_service.api import (
     insights_router,
     embeddings_router,
     health_router,
+    traces_router,
+    prompts_api_router,
 )
 from ai_service.db import init_db, close_db
 from ai_service.llm import init_llm_clients
@@ -79,6 +81,8 @@ app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 app.include_router(recommendations_router, prefix="/recommendations", tags=["Recommendations"])
 app.include_router(insights_router, prefix="/insights", tags=["Insights"])
 app.include_router(embeddings_router, prefix="/embeddings", tags=["Embeddings"])
+app.include_router(traces_router, prefix="/traces", tags=["Traces"])
+app.include_router(prompts_api_router, prefix="/prompts", tags=["Prompts"])
 
 
 if __name__ == "__main__":

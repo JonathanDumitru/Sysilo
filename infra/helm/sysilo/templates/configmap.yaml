@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sysilo.fullname" . }}-config
+  labels:
+    {{- include "sysilo.labels" . | nindent 4 }}
+data:
+  # Global platform configuration
+  PLATFORM_NAME: "sysilo"
+  PLATFORM_VERSION: {{ .Chart.AppVersion | quote }}
+
+  # Tenant isolation mode
+  TENANT_ISOLATION_ENABLED: {{ .Values.global.tenantIsolation.enabled | quote }}
+  TENANT_ISOLATION_MODE: {{ .Values.global.tenantIsolation.mode | quote }}
+
+  # Service discovery endpoints
+  {{- if .Values.apiGateway.enabled }}
+  API_GATEWAY_URL: "http://{{ include "sysilo.fullname" . }}-api-gateway:{{ .Values.apiGateway.port }}"
+  {{- end }}
+  {{- if .Values.agentGateway.enabled }}
+  AGENT_GATEWAY_URL: "http://{{ include "sysilo.fullname" . }}-agent-gateway:{{ .Values.agentGateway.port }}"
+  {{- end }}
+  {{- if .Values.integrationService.enabled }}
+  INTEGRATION_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-integration-service:{{ .Values.integrationService.port }}"
+  {{- end }}
+  {{- if .Values.dataService.enabled }}
+  DATA_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-data-service:{{ .Values.dataService.port }}"
+  {{- end }}
+  {{- if .Values.assetService.enabled }}
+  ASSET_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-asset-service:{{ .Values.assetService.port }}"
+  {{- end }}
+  {{- if .Values.opsService.enabled }}
+  OPS_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-ops-service:{{ .Values.opsService.port }}"
+  {{- end }}
+  {{- if .Values.governanceService.enabled }}
+  GOVERNANCE_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-governance-service:{{ .Values.governanceService.port }}"
+  {{- end }}
+  {{- if .Values.rationalizationService.enabled }}
+  RATIONALIZATION_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-rationalization-service:{{ .Values.rationalizationService.port }}"
+  {{- end }}
+  {{- if .Values.aiService.enabled }}
+  AI_SERVICE_URL: "http://{{ include "sysilo.fullname" . }}-ai-service:{{ .Values.aiService.port }}"
+  {{- end }}
+
+  # Infrastructure endpoints (non-sensitive)
+  {{- if .Values.redis.external.enabled }}
+  REDIS_HOST: {{ .Values.redis.external.host | quote }}
+  REDIS_PORT: {{ .Values.redis.external.port | quote }}
+  {{- else if .Values.redis.enabled }}
+  REDIS_HOST: "{{ include "sysilo.fullname" . }}-redis-master"
+  REDIS_PORT: "6379"
+  {{- end }}
+
+  {{- if .Values.kafka.external.enabled }}
+  KAFKA_BROKERS: {{ .Values.kafka.external.brokers | quote }}
+  {{- else if .Values.kafka.enabled }}
+  KAFKA_BROKERS: "{{ include "sysilo.fullname" . }}-kafka:9092"
+  {{- end }}
