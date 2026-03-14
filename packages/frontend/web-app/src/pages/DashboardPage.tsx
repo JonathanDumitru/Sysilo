@@ -11,23 +11,23 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Overview of your integration platform</p>
+        <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
+        <p className="text-gray-400">Overview of your integration platform</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <div key={stat.name} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div key={stat.name} className="glass-card p-6">
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-primary-50 rounded-lg">
-                <stat.icon className="w-5 h-5 text-primary-600" />
+              <div className="p-2 bg-primary-500/20 rounded-lg">
+                <stat.icon className="w-5 h-5 text-primary-400" />
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm font-medium text-gray-500">{stat.name}</p>
-              <p className="text-xs text-gray-400 mt-1">{stat.change}</p>
+              <p className="text-3xl font-bold text-gray-100">{stat.value}</p>
+              <p className="text-sm font-medium text-gray-400">{stat.name}</p>
+              <p className="text-xs text-gray-500 mt-1">{stat.change}</p>
             </div>
           </div>
         ))}
@@ -35,8 +35,8 @@ export function DashboardPage() {
 
       {/* Recent Activity */}
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Runs</h2>
+        <div className="glass-panel p-6">
+          <h2 className="text-lg font-semibold text-gray-100 mb-4">Recent Runs</h2>
           <div className="space-y-3">
             {[
               { name: 'Salesforce → Snowflake Sync', status: 'completed', time: '2 min ago' },
@@ -44,18 +44,18 @@ export function DashboardPage() {
               { name: 'Daily Invoice Export', status: 'completed', time: '1 hour ago' },
               { name: 'Customer Data Validation', status: 'failed', time: '2 hours ago' },
             ].map((run, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={i} className="flex items-center justify-between py-2 border-b border-surface-border last:border-0">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{run.name}</p>
-                  <p className="text-xs text-gray-400">{run.time}</p>
+                  <p className="text-sm font-medium text-gray-200">{run.name}</p>
+                  <p className="text-xs text-gray-500">{run.time}</p>
                 </div>
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded-full ${
                     run.status === 'completed'
-                      ? 'bg-green-50 text-green-700'
+                      ? 'bg-status-healthy/10 text-status-healthy'
                       : run.status === 'running'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'bg-red-50 text-red-700'
+                      ? 'bg-status-info/10 text-status-info'
+                      : 'bg-status-critical/10 text-status-critical'
                   }`}
                 >
                   {run.status}
@@ -65,8 +65,8 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Agent Status</h2>
+        <div className="glass-panel p-6">
+          <h2 className="text-lg font-semibold text-gray-100 mb-4">Agent Status</h2>
           <div className="space-y-3">
             {[
               { name: 'prod-agent-01', status: 'connected', location: 'AWS us-east-1' },
@@ -74,16 +74,16 @@ export function DashboardPage() {
               { name: 'on-prem-agent', status: 'connected', location: 'Data Center' },
               { name: 'dev-agent', status: 'disconnected', location: 'Local' },
             ].map((agent, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={i} className="flex items-center justify-between py-2 border-b border-surface-border last:border-0">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-2 h-2 rounded-full ${
-                      agent.status === 'connected' ? 'bg-green-500' : 'bg-gray-300'
+                    className={`status-dot ${
+                      agent.status === 'connected' ? 'status-dot-healthy' : 'bg-gray-600'
                     }`}
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{agent.name}</p>
-                    <p className="text-xs text-gray-400">{agent.location}</p>
+                    <p className="text-sm font-medium text-gray-200">{agent.name}</p>
+                    <p className="text-xs text-gray-500">{agent.location}</p>
                   </div>
                 </div>
                 <span className="text-xs text-gray-500">{agent.status}</span>
