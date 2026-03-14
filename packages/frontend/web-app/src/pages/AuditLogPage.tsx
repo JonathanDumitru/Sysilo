@@ -1,153 +1,144 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { format } from 'date-fns';
 import {
   Search,
   Download,
-  ChevronRight,
-  User,
-  Bot,
-  Server,
-  Calendar,
-  Clock,
-  Eye,
+  Loader2,
+  ChevronDown,
+  Filter,
 } from 'lucide-react';
+import { useAuditTimeline } from '../hooks/useAuditTimeline';
+import { TimelineEvent } from '../components/audit/TimelineEvent';
+import { TimelineDetailPanel } from '../components/audit/TimelineDetailPanel';
+import { TimelineScrubber } from '../components/audit/TimelineScrubber';
+import { EVENT_TYPES } from '../components/audit/eventTypes';
+import type { TimelineEventData } from '../components/audit/TimelineEvent';
 
-// Mock data
-const auditEntries = [
+// Mock data used when API returns empty (development/demo)
+const mockEvents: TimelineEventData[] = [
   {
     id: '1',
-    actor: { id: 'user-1', name: 'John Doe', type: 'user' },
     action: 'integration.created',
+    actor: { id: 'user-1', name: 'John Doe', type: 'user' },
     resourceType: 'integration',
     resourceId: 'int-123',
     resourceName: 'Salesforce Sync',
-    timestamp: '2024-01-15T14:32:00Z',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.100',
     metadata: { source: 'web-ui' },
-    changes: {
-      before: null,
-      after: { name: 'Salesforce Sync', enabled: true },
-    },
+    changes: { before: null, after: { name: 'Salesforce Sync', enabled: true } },
+    hash: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12345678',
   },
   {
     id: '2',
-    actor: { id: 'user-2', name: 'Jane Smith', type: 'user' },
     action: 'policy.updated',
+    actor: { id: 'user-2', name: 'Jane Smith', type: 'user' },
     resourceType: 'policy',
     resourceId: 'pol-456',
     resourceName: 'API Key Rotation Policy',
-    timestamp: '2024-01-15T13:15:00Z',
+    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.101',
     metadata: { source: 'web-ui' },
-    changes: {
-      before: { enforcement_mode: 'warn' },
-      after: { enforcement_mode: 'enforce' },
-    },
+    changes: { before: { enforcement_mode: 'warn' }, after: { enforcement_mode: 'enforce' } },
+    hash: 'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789a',
   },
   {
     id: '3',
-    actor: { id: 'system', name: 'System', type: 'system' },
     action: 'alert.fired',
+    actor: { id: 'system', name: 'System', type: 'system' },
     resourceType: 'alert',
     resourceId: 'alert-789',
     resourceName: 'High CPU Usage',
-    timestamp: '2024-01-15T12:45:00Z',
+    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     ipAddress: null,
     metadata: { triggered_value: 92.5, threshold: 80 },
     changes: null,
+    hash: 'c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789ab0',
   },
   {
     id: '4',
-    actor: { id: 'agent-1', name: 'prod-agent-01', type: 'agent' },
     action: 'task.completed',
+    actor: { id: 'agent-1', name: 'prod-agent-01', type: 'agent' },
     resourceType: 'task',
     resourceId: 'task-321',
     resourceName: 'Database Query Task',
-    timestamp: '2024-01-15T12:30:00Z',
+    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
     ipAddress: '10.0.0.50',
     metadata: { duration_ms: 1250, rows_returned: 500 },
     changes: null,
+    hash: 'd4e5f6789012345678901234567890abcdef1234567890abcdef123456789ab0c1',
   },
   {
     id: '5',
-    actor: { id: 'user-1', name: 'John Doe', type: 'user' },
     action: 'connection.deleted',
+    actor: { id: 'user-1', name: 'John Doe', type: 'user' },
     resourceType: 'connection',
     resourceId: 'conn-654',
     resourceName: 'Legacy Oracle DB',
-    timestamp: '2024-01-15T11:20:00Z',
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.100',
     metadata: { reason: 'Deprecated' },
-    changes: {
-      before: { name: 'Legacy Oracle DB', type: 'oracle', enabled: false },
-      after: null,
-    },
+    changes: { before: { name: 'Legacy Oracle DB', type: 'oracle', enabled: false }, after: null },
+    hash: 'e5f6789012345678901234567890abcdef1234567890abcdef123456789ab0c1d2',
   },
   {
     id: '6',
-    actor: { id: 'user-3', name: 'Bob Wilson', type: 'user' },
     action: 'approval.approved',
+    actor: { id: 'user-3', name: 'Bob Wilson', type: 'user' },
     resourceType: 'approval_request',
     resourceId: 'apr-987',
     resourceName: 'New Integration Request',
-    timestamp: '2024-01-15T10:45:00Z',
+    timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.102',
     metadata: { stage: 2, comment: 'Looks good, approved.' },
-    changes: {
-      before: { status: 'pending', current_stage: 1 },
-      after: { status: 'approved', current_stage: 2 },
-    },
+    changes: { before: { status: 'pending', current_stage: 1 }, after: { status: 'approved', current_stage: 2 } },
+    hash: 'f6789012345678901234567890abcdef1234567890abcdef123456789ab0c1d2e3',
   },
   {
     id: '7',
-    actor: { id: 'system', name: 'System', type: 'system' },
     action: 'incident.auto_created',
+    actor: { id: 'system', name: 'System', type: 'system' },
     resourceType: 'incident',
     resourceId: 'inc-111',
     resourceName: 'Critical Alert Incident',
-    timestamp: '2024-01-15T10:30:00Z',
+    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
     ipAddress: null,
     metadata: { triggered_by_alert: 'alert-789' },
     changes: null,
+    hash: '789012345678901234567890abcdef1234567890abcdef123456789ab0c1d2e3f4',
   },
   {
     id: '8',
-    actor: { id: 'user-2', name: 'Jane Smith', type: 'user' },
     action: 'standard.created',
+    actor: { id: 'user-2', name: 'Jane Smith', type: 'user' },
     resourceType: 'standard',
     resourceId: 'std-222',
     resourceName: 'API Versioning Standard',
-    timestamp: '2024-01-15T09:15:00Z',
+    timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.101',
     metadata: { category: 'api', version: 1 },
-    changes: {
-      before: null,
-      after: { name: 'API Versioning Standard', category: 'api' },
-    },
+    changes: { before: null, after: { name: 'API Versioning Standard', category: 'api' } },
+    hash: '9012345678901234567890abcdef1234567890abcdef123456789ab0c1d2e3f4a5',
   },
 ];
 
-const actionCategories = [
-  { value: 'all', label: 'All Actions' },
-  { value: 'created', label: 'Created' },
-  { value: 'updated', label: 'Updated' },
-  { value: 'deleted', label: 'Deleted' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
+const dateRangeOptions = [
+  { value: '1h', label: 'Last 1 hour' },
+  { value: '24h', label: 'Last 24 hours' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
 ];
 
-const resourceTypes = [
-  { value: 'all', label: 'All Resources' },
-  { value: 'integration', label: 'Integrations' },
-  { value: 'connection', label: 'Connections' },
-  { value: 'policy', label: 'Policies' },
-  { value: 'standard', label: 'Standards' },
-  { value: 'alert', label: 'Alerts' },
-  { value: 'incident', label: 'Incidents' },
-  { value: 'approval_request', label: 'Approvals' },
-  { value: 'task', label: 'Tasks' },
+const eventTypeOptions = [
+  { value: 'all', label: 'All Events' },
+  ...Object.entries(EVENT_TYPES).map(([key, config]) => ({
+    value: key,
+    label: config.label,
+  })),
 ];
 
-const actorTypes = [
+const actorTypeOptions = [
   { value: 'all', label: 'All Actors' },
   { value: 'user', label: 'Users' },
   { value: 'system', label: 'System' },
@@ -155,304 +146,241 @@ const actorTypes = [
 ];
 
 export function AuditLogPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [actionFilter, setActionFilter] = useState('all');
-  const [resourceFilter, setResourceFilter] = useState('all');
-  const [actorFilter, setActorFilter] = useState('all');
-  const [selectedEntry, setSelectedEntry] = useState<typeof auditEntries[0] | null>(null);
-  const [dateRange, setDateRange] = useState('7d');
+  const {
+    events: apiEvents,
+    groupedByDay: apiGroupedByDay,
+    isLoading,
+    hasMore,
+    loadMore,
+    filters,
+    setFilters,
+    startDate,
+    endDate,
+  } = useAuditTimeline();
 
-  const getActorIcon = (type: string) => {
-    switch (type) {
-      case 'user':
-        return <User className="w-4 h-4" />;
-      case 'system':
-        return <Server className="w-4 h-4" />;
-      case 'agent':
-        return <Bot className="w-4 h-4" />;
-      default:
-        return <User className="w-4 h-4" />;
-    }
-  };
+  // Use mock data when API returns empty
+  const useMock = apiEvents.length === 0 && !isLoading;
 
-  const getActionColor = (action: string) => {
-    if (action.includes('created')) return 'text-green-600 bg-green-50';
-    if (action.includes('updated')) return 'text-blue-600 bg-blue-50';
-    if (action.includes('deleted')) return 'text-red-600 bg-red-50';
-    if (action.includes('approved')) return 'text-green-600 bg-green-50';
-    if (action.includes('rejected')) return 'text-red-600 bg-red-50';
-    if (action.includes('fired')) return 'text-orange-600 bg-orange-50';
-    if (action.includes('completed')) return 'text-purple-600 bg-purple-50';
-    return 'text-gray-600 bg-gray-50';
-  };
+  const displayEvents = useMock ? mockEvents : apiEvents;
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return {
-      date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString(),
-    };
-  };
+  // Group mock data by day if needed
+  const mockGroupedByDay = useMemo(() => {
+    const groups: Record<string, TimelineEventData[]> = {};
+    mockEvents.forEach((e) => {
+      const dayKey = format(new Date(e.timestamp), 'yyyy-MM-dd');
+      if (!groups[dayKey]) groups[dayKey] = [];
+      groups[dayKey].push(e);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([dateStr, dayEvents]) => ({
+        date: dateStr,
+        label: format(new Date(dateStr), 'EEEE, MMMM d, yyyy'),
+        events: dayEvents.sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        ),
+      }));
+  }, []);
 
-  const formatAction = (action: string) => {
-    return action.replace('.', ' → ').replace(/_/g, ' ');
-  };
+  const groupedByDay = useMock ? mockGroupedByDay : apiGroupedByDay;
+
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEventData | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+
+  const handleScrubberRangeChange = useCallback(
+    (_start: Date, _end: Date) => {
+      // Range changes are driven by the scrubber handles
+      // In a full implementation this would refetch with new date bounds
+    },
+    []
+  );
+
+  const handleScrubberPointClick = useCallback(
+    (date: Date) => {
+      // Find nearest event to clicked date and scroll to it
+      if (!timelineRef.current || displayEvents.length === 0) return;
+      const targetTime = date.getTime();
+      let closest = displayEvents[0];
+      let closestDiff = Math.abs(new Date(closest.timestamp).getTime() - targetTime);
+      displayEvents.forEach((e) => {
+        const diff = Math.abs(new Date(e.timestamp).getTime() - targetTime);
+        if (diff < closestDiff) {
+          closest = e;
+          closestDiff = diff;
+        }
+      });
+      const el = document.getElementById(`timeline-event-${closest.id}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setSelectedEvent(closest);
+    },
+    [displayEvents]
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-          <p className="text-gray-500">Complete history of all platform actions</p>
+          <h1 className="text-2xl font-bold text-gray-100">Audit Timeline</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Interactive timeline of all platform activity
+          </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <button className="flex items-center gap-2 px-4 py-2 glass-card text-sm font-medium text-gray-300 hover:text-gray-100 transition-colors">
           <Download className="w-4 h-4" />
           Export
         </button>
       </div>
 
+      {/* Scrubber */}
+      <TimelineScrubber
+        events={displayEvents}
+        startDate={startDate}
+        endDate={endDate}
+        onRangeChange={handleScrubberRangeChange}
+        onPointClick={handleScrubberPointClick}
+      />
+
       {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="glass-card p-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-gray-500">
+            <Filter className="w-4 h-4" />
+          </div>
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
-              placeholder="Search by resource, actor, or action..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Search events..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full pl-10 pr-4 py-2 bg-surface-overlay/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/30"
             />
           </div>
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="1h">Last 1 hour</option>
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-          </select>
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {actionCategories.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={resourceFilter}
-            onChange={(e) => setResourceFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {resourceTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={actorFilter}
-            onChange={(e) => setActorFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {actorTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={filters.dateRange}
+              onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
+              className="appearance-none pl-3 pr-8 py-2 bg-surface-overlay/50 border border-surface-border rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50 cursor-pointer"
+            >
+              {dateRangeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              value={filters.eventType}
+              onChange={(e) => setFilters({ ...filters, eventType: e.target.value })}
+              className="appearance-none pl-3 pr-8 py-2 bg-surface-overlay/50 border border-surface-border rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50 cursor-pointer"
+            >
+              {eventTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              value={filters.actor}
+              onChange={(e) => setFilters({ ...filters, actor: e.target.value })}
+              className="appearance-none pl-3 pr-8 py-2 bg-surface-overlay/50 border border-surface-border rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-500/50 cursor-pointer"
+            >
+              {actorTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          </div>
+          <span className="text-xs text-gray-600 ml-auto">
+            {displayEvents.length} event{displayEvents.length !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Audit Log List */}
-        <div className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Activity Log</h2>
-              <span className="text-sm text-gray-500">{auditEntries.length} entries</span>
+      {/* Main content: Timeline + Detail Panel */}
+      <div className="flex gap-6">
+        {/* Timeline (70%) */}
+        <div className="w-[70%] min-w-0" ref={timelineRef}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+              <span className="ml-3 text-gray-500 text-sm">Loading timeline...</span>
             </div>
-          </div>
-          <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
-            {auditEntries.map((entry) => {
-              const { date, time } = formatTimestamp(entry.timestamp);
-              return (
-                <div
-                  key={entry.id}
-                  onClick={() => setSelectedEntry(entry)}
-                  className={`px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedEntry?.id === entry.id ? 'bg-primary-50' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-gray-100 rounded-lg">
-                        {getActorIcon(entry.actor.type)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{entry.actor.name}</span>
-                          <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${getActionColor(
-                              entry.action
-                            )}`}
-                          >
-                            {formatAction(entry.action)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-0.5">
-                          {entry.resourceType}:{' '}
-                          <span className="font-medium">{entry.resourceName}</span>
-                        </p>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {date}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {time}
-                          </span>
-                          {entry.ipAddress && (
-                            <span className="font-mono">{entry.ipAddress}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detail Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          {selectedEntry ? (
-            <>
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="font-semibold text-gray-900">Entry Details</h2>
-              </div>
-              <div className="p-6 space-y-6">
-                {/* Actor Info */}
-                <div>
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                    Actor
-                  </h3>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-lg">
-                      {getActorIcon(selectedEntry.actor.type)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{selectedEntry.actor.name}</p>
-                      <p className="text-sm text-gray-500 capitalize">{selectedEntry.actor.type}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action */}
-                <div>
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                    Action
-                  </h3>
-                  <span
-                    className={`text-sm font-medium px-3 py-1 rounded-full ${getActionColor(
-                      selectedEntry.action
-                    )}`}
-                  >
-                    {formatAction(selectedEntry.action)}
-                  </span>
-                </div>
-
-                {/* Resource */}
-                <div>
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                    Resource
-                  </h3>
-                  <p className="text-sm text-gray-900">{selectedEntry.resourceName}</p>
-                  <p className="text-xs text-gray-500 font-mono mt-1">
-                    {selectedEntry.resourceType}/{selectedEntry.resourceId}
-                  </p>
-                </div>
-
-                {/* Timestamp */}
-                <div>
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                    Timestamp
-                  </h3>
-                  <p className="text-sm text-gray-900">
-                    {new Date(selectedEntry.timestamp).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* IP Address */}
-                {selectedEntry.ipAddress && (
-                  <div>
-                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                      IP Address
-                    </h3>
-                    <p className="text-sm font-mono text-gray-900">{selectedEntry.ipAddress}</p>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                {selectedEntry.metadata && Object.keys(selectedEntry.metadata).length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                      Metadata
-                    </h3>
-                    <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-x-auto">
-                      {JSON.stringify(selectedEntry.metadata, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {/* Changes */}
-                {selectedEntry.changes && (
-                  <div>
-                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                      Changes
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedEntry.changes.before && (
-                        <div>
-                          <p className="text-xs font-medium text-red-600 mb-1">Before</p>
-                          <pre className="text-xs bg-red-50 p-3 rounded-lg overflow-x-auto text-red-800">
-                            {JSON.stringify(selectedEntry.changes.before, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                      {selectedEntry.changes.after && (
-                        <div>
-                          <p className="text-xs font-medium text-green-600 mb-1">After</p>
-                          <pre className="text-xs bg-green-50 p-3 rounded-lg overflow-x-auto text-green-800">
-                            {JSON.stringify(selectedEntry.changes.after, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
+          ) : groupedByDay.length === 0 ? (
+            <div className="glass-panel p-12 text-center">
+              <p className="text-gray-500">No events found for the selected filters.</p>
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-full py-20">
-              <div className="text-center">
-                <Eye className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">Select an entry to view details</p>
-              </div>
+            <div className="space-y-8">
+              {groupedByDay.map((group) => (
+                <div key={group.date}>
+                  {/* Day header */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-px flex-1 bg-surface-border" />
+                    <span className="text-xs text-gray-600 uppercase tracking-wider font-medium whitespace-nowrap">
+                      {group.label}
+                    </span>
+                    <div className="h-px flex-1 bg-surface-border" />
+                  </div>
+
+                  {/* Timeline events for this day */}
+                  <div className="relative">
+                    {/* Vertical timeline line */}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 bg-surface-border" />
+
+                    <div className="space-y-6">
+                      {group.events.map((event, idx) => (
+                        <div
+                          key={event.id}
+                          id={`timeline-event-${event.id}`}
+                          className="relative flex"
+                        >
+                          <TimelineEvent
+                            event={event}
+                            side={idx % 2 === 0 ? 'left' : 'right'}
+                            isSelected={selectedEvent?.id === event.id}
+                            onClick={() =>
+                              setSelectedEvent(
+                                selectedEvent?.id === event.id ? null : event
+                              )
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Load more */}
+              {hasMore && !useMock && (
+                <div className="flex justify-center py-4">
+                  <button
+                    onClick={loadMore}
+                    className="px-6 py-2 glass-card text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Load more events
+                  </button>
+                </div>
+              )}
             </div>
           )}
+        </div>
+
+        {/* Detail Panel (30%) */}
+        <div className="w-[30%] min-w-0">
+          <TimelineDetailPanel
+            event={selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+          />
         </div>
       </div>
     </div>

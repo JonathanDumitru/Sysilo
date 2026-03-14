@@ -81,6 +81,19 @@ body {
   @apply bg-surface-raised/80 backdrop-blur-glass border border-surface-border rounded-lg;
 }
 
+/* Slide-in animation for drawers */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Topology graph legend dot colors */
+.legend-dot-green { @apply bg-status-healthy; }
+.legend-dot-amber { @apply bg-status-warning; }
+.legend-dot-red { @apply bg-status-critical; }
+.legend-dot-blue { @apply bg-status-info; }
+.legend-dot-gray { @apply bg-gray-500; }
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   @apply w-1.5;

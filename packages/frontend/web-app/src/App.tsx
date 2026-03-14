@@ -36,6 +36,10 @@ import { PlaybooksPage } from './pages/PlaybooksPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 // AI Components
 import { AIAssistButton } from './components/ai';
+// Command Palette & Shortcuts
+import { CommandPalette } from './components/CommandPalette';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { GlobalShortcuts } from './components/GlobalShortcuts';
 // Billing
 import { PricingPage } from './pages/PricingPage';
 
@@ -103,6 +107,10 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
+      {/* Global Command Palette & Shortcuts */}
+      <CommandPalette />
+      <KeyboardShortcutsHelp />
+      <GlobalShortcuts />
       {/* Global AI Assistant Button */}
       <AIAssistButton context="general" />
     </>

@@ -1,19 +1,23 @@
 import { Bell, Search, User } from 'lucide-react';
+import { useCommandPalette } from '../../hooks/useCommandPalette';
 
 export function Header() {
+  const { open } = useCommandPalette();
+
   return (
     <header className="h-16 bg-surface-raised/80 backdrop-blur-glass border-b border-surface-border flex items-center justify-between px-6">
-      {/* Search */}
+      {/* Search — opens command palette */}
       <div className="flex items-center gap-2 w-96">
-        <div className="flex items-center gap-2 glass-input w-full">
-          <Search className="w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search integrations, agents, assets..."
-            className="bg-transparent border-none outline-none text-sm flex-1 text-gray-200 placeholder-gray-500"
-          />
-          <kbd className="text-xs text-gray-500 bg-surface-overlay border border-surface-border px-1.5 py-0.5 rounded">⌘K</kbd>
-        </div>
+        <button
+          onClick={open}
+          className="flex items-center gap-2 glass-input w-full text-left cursor-pointer hover:border-surface-border-strong transition-colors"
+        >
+          <Search className="w-4 h-4 text-gray-500" />
+          <span className="text-sm flex-1 text-gray-500">
+            Search integrations, agents, assets...
+          </span>
+          <kbd className="text-xs text-gray-500 bg-surface-overlay border border-surface-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+        </button>
       </div>
 
       {/* Right side */}
