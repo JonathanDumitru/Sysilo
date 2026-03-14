@@ -4,7 +4,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use regorus::Engine;
-use tracing::{info, warn};
+use tracing::info;
 
 // ============================================================================
 // Types
