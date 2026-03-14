@@ -17,6 +17,7 @@ mod config;
 mod connections;
 mod consumer;
 mod engine;
+mod healing;
 mod kafka;
 mod middleware;
 mod playbooks;
@@ -25,6 +26,8 @@ mod storage;
 use crate::config::Config;
 use crate::engine::Engine;
 use crate::connections::api as connections_api;
+use crate::healing::api as healing_api;
+use crate::healing::HealingService;
 use crate::playbooks::api as playbooks_api;
 use crate::storage::Storage;
 
@@ -33,6 +36,7 @@ pub struct AppState {
     pub config: Config,
     pub storage: Storage,
     pub engine: Engine,
+    pub healing: Option<Arc<HealingService>>,
 }
 
 #[tokio::main]
@@ -115,11 +119,47 @@ async fn main() -> anyhow::Result<()> {
         info!("Result consumer started");
     }
 
+    // Initialize healing service
+    let healing_config = healing::HealingConfig {
+        enabled: std::env::var("HEALING_ENABLED")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(true),
+        auto_approve_low_risk: std::env::var("HEALING_AUTO_APPROVE_LOW_RISK")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(true),
+        max_auto_retries: std::env::var("HEALING_MAX_AUTO_RETRIES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(3),
+        ai_service_url: std::env::var("AI_SERVICE_URL")
+            .unwrap_or_else(|_| "http://localhost:8090".to_string()),
+        governance_service_url: std::env::var("GOVERNANCE_SERVICE_URL")
+            .unwrap_or_else(|_| "http://localhost:8086".to_string()),
+    };
+
+    let healing = match HealingService::new(&config.database.url, healing_config).await {
+        Ok(service) => {
+            info!("Healing service initialized");
+            let service = Arc::new(service);
+            // Start background approval checker
+            healing::spawn_approval_checker(Arc::clone(&service));
+            info!("Healing approval checker started");
+            Some(service)
+        }
+        Err(e) => {
+            tracing::warn!("Healing service not available: {}", e);
+            None
+        }
+    };
+
     // Create application state
     let state = Arc::new(AppState {
         config: config.clone(),
         storage,
         engine,
+        healing,
     });
 
     // Routes requiring tenant context

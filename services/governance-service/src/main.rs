@@ -15,6 +15,7 @@ mod api;
 mod approvals;
 mod audit;
 mod compliance;
+mod federated;
 mod kafka;
 mod policies;
 mod standards;
@@ -22,6 +23,7 @@ mod standards;
 use crate::approvals::ApprovalsService;
 use crate::audit::AuditService;
 use crate::compliance::ComplianceService;
+use crate::federated::FederatedGovernanceService;
 use crate::kafka::{GovernanceEventProducer, KafkaConfig};
 use crate::policies::PoliciesService;
 use crate::standards::StandardsService;
@@ -33,6 +35,7 @@ pub struct AppState {
     pub approvals: ApprovalsService,
     pub audit: AuditService,
     pub compliance: ComplianceService,
+    pub federated: FederatedGovernanceService,
     pub events: Option<GovernanceEventProducer>,
 }
 
@@ -68,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
     let approvals = ApprovalsService::new(&database_url).await?;
     let audit = AuditService::new(&database_url).await?;
     let compliance = ComplianceService::new(&database_url).await?;
+    let federated = FederatedGovernanceService::new(&database_url).await?;
 
     let state = Arc::new(AppState {
         policies,
@@ -75,6 +79,7 @@ async fn main() -> anyhow::Result<()> {
         approvals,
         audit,
         compliance,
+        federated,
         events,
     });
 

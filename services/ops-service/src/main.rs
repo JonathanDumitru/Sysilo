@@ -17,12 +17,14 @@ mod alerts;
 mod evaluator;
 mod incidents;
 mod notifications;
+mod digital_twin;
 
 use crate::metrics::MetricsService;
 use crate::alerts::AlertsService;
 use crate::evaluator::AlertEvaluator;
 use crate::incidents::IncidentsService;
 use crate::notifications::NotificationService;
+use crate::digital_twin::{DigitalTwinService, TwinLearner};
 
 /// Application state shared across handlers
 pub struct AppState {
@@ -30,6 +32,7 @@ pub struct AppState {
     pub alerts: Arc<AlertsService>,
     pub incidents: Arc<IncidentsService>,
     pub notifications: Arc<NotificationService>,
+    pub digital_twins: Arc<DigitalTwinService>,
 }
 
 #[tokio::main]
@@ -57,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
     let alerts = Arc::new(AlertsService::new(&database_url).await?);
     let incidents = Arc::new(IncidentsService::new(&database_url).await?);
     let notifications = Arc::new(NotificationService::new(&database_url).await?);
+    let digital_twins = Arc::new(DigitalTwinService::new(&database_url).await?);
 
     // Start the alert evaluation engine
     let eval_interval: u64 = std::env::var("ALERT_EVAL_INTERVAL_SECS")
@@ -73,11 +77,25 @@ async fn main() -> anyhow::Result<()> {
     let _evaluator_handle = evaluator.start();
     info!("Alert evaluator started with {}s interval", eval_interval);
 
+    // Start the digital twin background learner
+    let twin_learner_interval: u64 = std::env::var("TWIN_LEARNER_INTERVAL_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(300); // 5 minutes default
+
+    let twin_learner = TwinLearner::new(
+        Arc::clone(&digital_twins),
+        twin_learner_interval,
+    );
+    let _twin_learner_handle = twin_learner.start();
+    info!("Digital twin learner started with {}s interval", twin_learner_interval);
+
     let state = Arc::new(AppState {
         metrics,
         alerts,
         incidents,
         notifications,
+        digital_twins,
     });
 
     // Build router
@@ -114,6 +132,16 @@ async fn main() -> anyhow::Result<()> {
         .route("/notifications/channels/:id", put(api::update_channel))
         .route("/notifications/channels/:id", delete(api::delete_channel))
         .route("/notifications/test/:id", post(api::test_channel))
+        // Digital Twin endpoints
+        .route("/twins", get(api::list_twins))
+        .route("/twins", post(api::create_twin))
+        .route("/twins/anomalies", get(api::list_twin_anomalies))
+        .route("/twins/predictions", get(api::list_twin_predictions))
+        .route("/twins/fleet-health", get(api::fleet_health))
+        .route("/twins/:integration_id", get(api::get_twin))
+        .route("/twins/:integration_id/learn", post(api::learn_twin_baseline))
+        .route("/twins/:integration_id/update", post(api::update_twin_state))
+        .route("/twins/:integration_id/simulate", post(api::simulate_twin_change))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
