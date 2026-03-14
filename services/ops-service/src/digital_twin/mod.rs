@@ -28,6 +28,7 @@ pub enum TwinStatus {
     Stale,
 }
 
+#[allow(dead_code)]
 impl TwinStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -147,6 +148,7 @@ pub enum AnomalyType {
     DataVolumeDrift,
 }
 
+#[allow(dead_code)]
 impl AnomalyType {
     pub fn as_str(&self) -> &'static str {
         match self {
