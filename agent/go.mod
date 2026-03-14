@@ -3,6 +3,7 @@ module github.com/sysilo/sysilo/agent
 go 1.22
 
 require (
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/lib/pq v1.10.9
 	github.com/sysilo/sysilo/proto v0.0.0
 	go.uber.org/zap v1.26.0

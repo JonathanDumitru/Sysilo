@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/sysilo/sysilo/services/agent-gateway/internal/config"
+	"github.com/sysilo/sysilo/services/agent-gateway/internal/dispatch"
 	"github.com/sysilo/sysilo/services/agent-gateway/internal/kafka"
 	"github.com/sysilo/sysilo/services/agent-gateway/internal/registry"
 	"github.com/sysilo/sysilo/services/agent-gateway/internal/tunnel"
@@ -84,6 +85,37 @@ func main() {
 	// Initialize tunnel server
 	tunnelServer := tunnel.NewServer(logger, cfg, agentRegistry, kafkaProducer)
 
+	// Initialize Kafka consumer with task dispatcher if Kafka is enabled
+	var kafkaConsumer *kafka.Consumer
+	if cfg.Kafka.Enabled {
+		brokers := strings.Split(cfg.Kafka.Brokers, ",")
+
+		// Create the dispatcher that bridges Kafka task messages to agents
+		taskDispatcher := dispatch.New(logger, agentRegistry, tunnelServer)
+
+		consumerCfg := kafka.ConsumerConfig{
+			Brokers:   brokers,
+			GroupID:   cfg.Kafka.GroupID,
+			TaskTopic: cfg.Kafka.TaskTopic,
+		}
+		var err error
+		kafkaConsumer, err = kafka.NewConsumer(logger, consumerCfg, taskDispatcher)
+		if err != nil {
+			logger.Fatal("Failed to create Kafka consumer", zap.Error(err))
+		}
+
+		// Start consuming in background
+		go func() {
+			logger.Info("Starting Kafka task consumer",
+				zap.String("topic", cfg.Kafka.TaskTopic),
+				zap.String("group_id", cfg.Kafka.GroupID),
+			)
+			if err := kafkaConsumer.Start(ctx); err != nil && ctx.Err() == nil {
+				logger.Error("Kafka consumer stopped unexpectedly", zap.Error(err))
+			}
+		}()
+	}
+
 	// Create gRPC server
 	var opts []grpc.ServerOption
 	// TODO: Add TLS credentials for production
@@ -120,6 +152,12 @@ func main() {
 	// Graceful shutdown
 	logger.Info("Shutting down server...")
 	grpcServer.GracefulStop()
+
+	if kafkaConsumer != nil {
+		if err := kafkaConsumer.Close(); err != nil {
+			logger.Error("Failed to close Kafka consumer", zap.Error(err))
+		}
+	}
 
 	logger.Info("Agent Gateway shutdown complete")
 }

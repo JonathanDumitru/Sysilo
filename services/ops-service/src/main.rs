@@ -14,20 +14,22 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod api;
 mod metrics;
 mod alerts;
+mod evaluator;
 mod incidents;
 mod notifications;
 
 use crate::metrics::MetricsService;
 use crate::alerts::AlertsService;
+use crate::evaluator::AlertEvaluator;
 use crate::incidents::IncidentsService;
 use crate::notifications::NotificationService;
 
 /// Application state shared across handlers
 pub struct AppState {
-    pub metrics: MetricsService,
-    pub alerts: AlertsService,
-    pub incidents: IncidentsService,
-    pub notifications: NotificationService,
+    pub metrics: Arc<MetricsService>,
+    pub alerts: Arc<AlertsService>,
+    pub incidents: Arc<IncidentsService>,
+    pub notifications: Arc<NotificationService>,
 }
 
 #[tokio::main]
@@ -51,10 +53,25 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "localhost:9092".to_string());
 
     // Initialize services
-    let metrics = MetricsService::new(&database_url).await?;
-    let alerts = AlertsService::new(&database_url).await?;
-    let incidents = IncidentsService::new(&database_url).await?;
-    let notifications = NotificationService::new(&database_url).await?;
+    let metrics = Arc::new(MetricsService::new(&database_url).await?);
+    let alerts = Arc::new(AlertsService::new(&database_url).await?);
+    let incidents = Arc::new(IncidentsService::new(&database_url).await?);
+    let notifications = Arc::new(NotificationService::new(&database_url).await?);
+
+    // Start the alert evaluation engine
+    let eval_interval: u64 = std::env::var("ALERT_EVAL_INTERVAL_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(60);
+
+    let evaluator = AlertEvaluator::new(
+        Arc::clone(&alerts),
+        Arc::clone(&metrics),
+        Arc::clone(&notifications),
+        eval_interval,
+    );
+    let _evaluator_handle = evaluator.start();
+    info!("Alert evaluator started with {}s interval", eval_interval);
 
     let state = Arc::new(AppState {
         metrics,

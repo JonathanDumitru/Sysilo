@@ -19,6 +19,7 @@ type Config struct {
 type KafkaConfig struct {
 	Enabled         bool   `yaml:"enabled"`
 	Brokers         string `yaml:"brokers"`
+	TaskTopic       string `yaml:"task_topic"`
 	TaskResultTopic string `yaml:"task_result_topic"`
 	LogsTopic       string `yaml:"logs_topic"`
 	GroupID         string `yaml:"group_id"`
@@ -59,6 +60,7 @@ func Default() *Config {
 		Kafka: KafkaConfig{
 			Enabled:         true,
 			Brokers:         "localhost:9092",
+			TaskTopic:       "sysilo.tasks",
 			TaskResultTopic: "sysilo.results",
 			LogsTopic:       "sysilo.logs",
 			GroupID:         "agent-gateway",

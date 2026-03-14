@@ -12,10 +12,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/redis/go-redis/v9"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/config"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/db"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/handlers"
 	"github.com/sysilo/sysilo/services/api-gateway/internal/middleware"
+	"github.com/sysilo/sysilo/services/api-gateway/internal/ratelimit"
 	"go.uber.org/zap"
 )
 
@@ -66,6 +68,27 @@ func main() {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer database.Close()
+
+	// Initialize Redis client for rate limiting
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	defer redisClient.Close()
+
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		logger.Warn("Redis not available, rate limiting will fail open", zap.Error(err))
+	} else {
+		logger.Info("Connected to Redis", zap.String("address", cfg.Redis.Address))
+	}
+
+	// Initialize rate limiter
+	rateLimiter := ratelimit.New(redisClient, ratelimit.Config{
+		RequestsPerMinute: cfg.RateLimit.RequestsPerMin,
+		RequestsPerHour:   cfg.RateLimit.RequestsPerHour,
+		BurstSize:         cfg.RateLimit.BurstSize,
+	})
 
 	// Create handlers with dependencies
 	h := handlers.New(database, logger)
@@ -139,8 +162,10 @@ func main() {
 		// Plan gate (feature gating)
 		r.Use(middleware.PlanGate(logger))
 
-		// Rate limiting
-		r.Use(middleware.RateLimit(cfg.RateLimit))
+		// Rate limiting (Redis-backed sliding window)
+		if cfg.RateLimit.Enabled {
+			r.Use(middleware.RateLimitWithRedis(logger, rateLimiter, cfg.RateLimit.RequestsPerMin))
+		}
 
 		// Plan & billing
 		r.Get("/plan", h.GetCurrentPlan)
