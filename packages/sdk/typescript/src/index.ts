@@ -7,6 +7,7 @@
 export * from './types';
 export * from './connector';
 export * from './testing';
+export * from './marketplace';
 
 export type {
   ConnectorAuthType,

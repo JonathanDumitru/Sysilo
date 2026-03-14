@@ -18,6 +18,7 @@ mod evaluator;
 mod incidents;
 mod notifications;
 mod digital_twin;
+mod immune_system;
 
 use crate::metrics::MetricsService;
 use crate::alerts::AlertsService;
@@ -25,6 +26,7 @@ use crate::evaluator::AlertEvaluator;
 use crate::incidents::IncidentsService;
 use crate::notifications::NotificationService;
 use crate::digital_twin::{DigitalTwinService, TwinLearner};
+use crate::immune_system::ImmuneSystemService;
 
 /// Application state shared across handlers
 pub struct AppState {
@@ -33,6 +35,7 @@ pub struct AppState {
     pub incidents: Arc<IncidentsService>,
     pub notifications: Arc<NotificationService>,
     pub digital_twins: Arc<DigitalTwinService>,
+    pub immune_system: Arc<ImmuneSystemService>,
 }
 
 #[tokio::main]
@@ -61,6 +64,7 @@ async fn main() -> anyhow::Result<()> {
     let incidents = Arc::new(IncidentsService::new(&database_url).await?);
     let notifications = Arc::new(NotificationService::new(&database_url).await?);
     let digital_twins = Arc::new(DigitalTwinService::new(&database_url).await?);
+    let immune_system = Arc::new(ImmuneSystemService::new(&database_url).await?);
 
     // Start the alert evaluation engine
     let eval_interval: u64 = std::env::var("ALERT_EVAL_INTERVAL_SECS")
@@ -96,6 +100,7 @@ async fn main() -> anyhow::Result<()> {
         incidents,
         notifications,
         digital_twins,
+        immune_system,
     });
 
     // Build router
@@ -142,6 +147,19 @@ async fn main() -> anyhow::Result<()> {
         .route("/twins/:integration_id/learn", post(api::learn_twin_baseline))
         .route("/twins/:integration_id/update", post(api::update_twin_state))
         .route("/twins/:integration_id/simulate", post(api::simulate_twin_change))
+        // Immune System endpoints
+        .route("/immune/signals", get(immune_system::api::list_danger_signals))
+        .route("/immune/signals", post(immune_system::api::report_danger_signal))
+        .route("/immune/signals/:id/acknowledge", post(immune_system::api::acknowledge_signal))
+        .route("/immune/signals/:id/resolve", post(immune_system::api::resolve_signal))
+        .route("/immune/signals/:id/remediate", post(immune_system::api::attempt_auto_remediation))
+        .route("/immune/correlate", post(immune_system::api::correlate_signals))
+        .route("/immune/memory", get(immune_system::api::list_immune_memories))
+        .route("/immune/memory", post(immune_system::api::record_remediation))
+        .route("/immune/vaccinate", post(immune_system::api::distribute_vaccination))
+        .route("/immune/vaccinations", get(immune_system::api::get_vaccination_history))
+        .route("/immune/status", get(immune_system::api::get_immune_status))
+        .route("/immune/resilience", get(immune_system::api::get_system_resilience_score))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

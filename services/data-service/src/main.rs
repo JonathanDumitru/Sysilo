@@ -15,12 +15,14 @@ mod api;
 mod catalog;
 mod contracts;
 mod lineage;
+mod products;
 mod quality;
 mod ingestion;
 
 use crate::catalog::CatalogService;
 use crate::contracts::ContractsService;
 use crate::lineage::LineageService;
+use crate::products::DataProductService;
 use crate::quality::QualityService;
 
 /// Application state shared across handlers
@@ -28,6 +30,7 @@ pub struct AppState {
     pub catalog: CatalogService,
     pub contracts: ContractsService,
     pub lineage: LineageService,
+    pub products: DataProductService,
     pub quality: QualityService,
 }
 
@@ -59,12 +62,14 @@ async fn main() -> anyhow::Result<()> {
     let catalog = CatalogService::new(&database_url).await?;
     let contracts = ContractsService::new(&database_url).await?;
     let lineage = LineageService::new(&neo4j_uri, &neo4j_user, &neo4j_password).await?;
+    let products = DataProductService::new(&database_url).await?;
     let quality = QualityService::new(&database_url).await?;
 
     let state = Arc::new(AppState {
         catalog,
         contracts,
         lineage,
+        products,
         quality,
     });
 
@@ -107,6 +112,21 @@ async fn main() -> anyhow::Result<()> {
         .route("/contracts/:id/validate", post(api::validate_contract))
         .route("/contracts/:id/check-usage", post(api::check_contract_usage))
         .route("/contracts/:id/history", get(api::get_contract_history))
+        // Data Product endpoints
+        .route("/products", post(api::create_product))
+        .route("/products", get(api::list_products))
+        .route("/products/subscribed", get(api::list_subscriber_products))
+        .route("/products/revenue", get(api::get_revenue_report))
+        .route("/products/:id", get(api::get_product))
+        .route("/products/:id", put(api::update_product))
+        .route("/products/:id/publish", post(api::publish_product))
+        .route("/products/:id/deprecate", post(api::deprecate_product))
+        .route("/products/:id/subscribe", post(api::subscribe))
+        .route("/products/:id/subscriptions", get(api::list_subscriptions))
+        .route("/products/:id/quality/evaluate", post(api::evaluate_quality))
+        .route("/products/subscriptions/:id/unsubscribe", post(api::unsubscribe))
+        .route("/products/subscriptions/:id/usage", post(api::record_usage))
+        .route("/products/subscriptions/:id/usage/summary", get(api::get_usage_summary))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

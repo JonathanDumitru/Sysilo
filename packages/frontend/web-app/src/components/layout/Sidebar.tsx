@@ -23,6 +23,12 @@ import {
   FolderKanban,
   Sparkles,
   Lock,
+  Store,
+  LayoutTemplate,
+  Bot,
+  Package,
+  ShieldCheck,
+  HeartPulse,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { usePlan } from '../../hooks/usePlan';
@@ -59,6 +65,15 @@ const rationalizationNavigation = [
   { name: 'Scenarios', href: '/rationalization/scenarios', icon: GitBranch },
   { name: 'Playbooks', href: '/rationalization/playbooks', icon: BookOpen },
   { name: 'Projects', href: '/rationalization/projects', icon: FolderKanban },
+];
+
+const platformNavigation = [
+  { name: 'Marketplace', href: '/marketplace', icon: Store },
+  { name: 'Templates', href: '/templates', icon: LayoutTemplate },
+  { name: 'Agent Hub', href: '/agent-hub', icon: Bot },
+  { name: 'Data Products', href: '/data-products', icon: Package },
+  { name: 'Compliance API', href: '/governance/compliance-api', icon: ShieldCheck },
+  { name: 'Immune System', href: '/operations/immune-system', icon: HeartPulse },
 ];
 
 const aiNavigation = [
@@ -184,10 +199,11 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
-        <NavSection title="Platform" items={mainNavigation} />
+        <NavSection title="Core" items={mainNavigation} />
         <NavSection title="Operations" items={operationsNavigation} />
         <NavSection title="Governance" items={governanceNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
         <NavSection title="Rationalization" items={rationalizationNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
+        <NavSection title="Platform" items={platformNavigation} />
         <NavSection title="AI" items={aiNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
       </nav>
 

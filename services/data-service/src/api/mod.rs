@@ -15,8 +15,16 @@ use crate::contracts::{
     SemanticContract, UpdateContractRequest, UpdateTermRequest, ValidationContext,
 };
 use crate::lineage::{LineageEdge, LineageEdgeType, LineageGraph, LineageNode, LineageQueryParams};
+use crate::products::api as products_api;
 use crate::quality::{
     QualityRule, QualityRuleInput, QualityScore, QualityCheckResult, QualityIssue, PiiScanResult,
+};
+
+// Re-export product API handlers
+pub use products_api::{
+    create_product, list_products, get_product, update_product, publish_product,
+    deprecate_product, subscribe, unsubscribe, list_subscriptions, list_subscriber_products,
+    record_usage, get_usage_summary, evaluate_quality, get_revenue_report,
 };
 
 // ============================================================================
