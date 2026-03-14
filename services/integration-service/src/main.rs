@@ -196,6 +196,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/connections/:id", put(connections_api::update_connection))
         .route("/connections/:id", delete(connections_api::delete_connection))
         .route("/connections/:id/test", post(connections_api::test_connection))
+        // Healing endpoints
+        .route("/healing/proposals", get(healing_api::list_proposals))
+        .route("/healing/proposals/:id", get(healing_api::get_proposal))
+        .route("/healing/proposals/:id/apply", post(healing_api::apply_proposal))
+        .route("/healing/diagnose", post(healing_api::diagnose))
+        .route("/healing/stats", get(healing_api::get_stats))
+        .route("/healing/config", put(healing_api::update_config))
         // Tenant context middleware: strict fail-closed context extraction.
         .layer(axum_middleware::from_fn(
             middleware::tenant_context_middleware,

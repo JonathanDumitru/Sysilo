@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
@@ -1892,7 +1892,7 @@ impl TwinLearner {
 
         // 2. Refresh predictions for active twins
         let active_twins = self.twins.fetch_active_twins().await?;
-        for (twin_id, tenant_id, integration_id) in &active_twins {
+        for (twin_id, tenant_id, _integration_id) in &active_twins {
             // Re-learn baseline periodically (every cycle for now, could be less frequent)
             match self.twins.learn_baseline(*tenant_id, *twin_id).await {
                 Ok(_) => {

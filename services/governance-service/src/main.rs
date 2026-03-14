@@ -120,6 +120,25 @@ async fn main() -> anyhow::Result<()> {
         .route("/compliance/status", get(api::get_compliance_status))
         .route("/compliance/assess", post(api::run_assessment))
         .route("/compliance/report/:framework", get(api::generate_report))
+        // Federated Governance — Domain endpoints
+        .route("/domains", post(api::create_domain))
+        .route("/domains", get(api::list_domains))
+        .route("/domains/hierarchy", get(api::get_domain_hierarchy))
+        .route("/domains/:id", get(api::get_domain))
+        .route("/domains/:id", put(api::update_domain))
+        .route("/domains/:id", delete(api::delete_domain))
+        // Federated Governance — Domain Policy endpoints
+        .route("/domains/:id/policies", post(api::create_domain_policy))
+        .route("/domains/:id/policies", get(api::list_domain_policies))
+        .route("/domains/policies/:id", put(api::update_domain_policy))
+        .route("/domains/policies/:id", delete(api::delete_domain_policy))
+        // Federated Governance — Inheritance & Evaluation
+        .route("/governance/inheritance", get(api::get_inheritance_chain))
+        .route("/governance/evaluate-federated", post(api::evaluate_federated))
+        // Federated Governance — Health Scores
+        .route("/governance/health", get(api::get_all_health_scores))
+        .route("/governance/health/:domain_id", get(api::get_domain_health))
+        .route("/governance/health/:domain_id/trends", get(api::get_health_trends))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

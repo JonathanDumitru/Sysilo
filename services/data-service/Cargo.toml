@@ -41,7 +41,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Data profiling
-arrow = { version = "50.0", default-features = false, features = ["json"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
