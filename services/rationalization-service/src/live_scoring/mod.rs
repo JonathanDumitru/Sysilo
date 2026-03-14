@@ -1007,10 +1007,7 @@ impl LiveScoringService {
 
         let (total_value_drift, total_health_drift, active_count) = drift_sums;
 
-        // Clamp effective scores to 0-10 range
-        let zero = Decimal::ZERO;
-        let ten = Decimal::new(100, 1);
-
+        // Clamp effective scores to 0-10 range and recompute quadrant
         sqlx::query(
             r#"
             UPDATE live_time_scores SET

@@ -350,7 +350,7 @@ impl ScenariosService {
         let discount_rate = Decimal::new(10, 2);
         let mut npv = -implementation_cost;
         for year in 1..=5 {
-            let discount_factor = Decimal::ONE / (Decimal::ONE + discount_rate).powu(year);
+            let discount_factor = Decimal::ONE / (Decimal::ONE + discount_rate).pow(year);
             npv += annual_savings * discount_factor;
         }
 
