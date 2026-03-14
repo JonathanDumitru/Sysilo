@@ -13,17 +13,20 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod api;
 mod catalog;
+mod contracts;
 mod lineage;
 mod quality;
 mod ingestion;
 
 use crate::catalog::CatalogService;
+use crate::contracts::ContractsService;
 use crate::lineage::LineageService;
 use crate::quality::QualityService;
 
 /// Application state shared across handlers
 pub struct AppState {
     pub catalog: CatalogService,
+    pub contracts: ContractsService,
     pub lineage: LineageService,
     pub quality: QualityService,
 }
@@ -54,11 +57,13 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "neo4j_dev".to_string());
 
     let catalog = CatalogService::new(&database_url).await?;
+    let contracts = ContractsService::new(&database_url).await?;
     let lineage = LineageService::new(&neo4j_uri, &neo4j_user, &neo4j_password).await?;
     let quality = QualityService::new(&database_url).await?;
 
     let state = Arc::new(AppState {
         catalog,
+        contracts,
         lineage,
         quality,
     });
@@ -89,6 +94,19 @@ async fn main() -> anyhow::Result<()> {
         .route("/quality/score/:dataset_id", get(api::get_quality_score))
         .route("/quality/pii-scan/:dataset_id", post(api::pii_scan))
         .route("/quality/entities/:id/issues", get(api::get_quality_issues))
+        // Contract endpoints
+        .route("/contracts", post(api::create_contract))
+        .route("/contracts", get(api::list_contracts))
+        .route("/contracts/:id", get(api::get_contract))
+        .route("/contracts/:id", put(api::update_contract))
+        .route("/contracts/:id/activate", post(api::activate_contract))
+        .route("/contracts/:id/deprecate", post(api::deprecate_contract))
+        .route("/contracts/:id/terms", post(api::add_contract_term))
+        .route("/contracts/terms/:term_id", put(api::update_contract_term))
+        .route("/contracts/terms/:term_id", delete(api::remove_contract_term))
+        .route("/contracts/:id/validate", post(api::validate_contract))
+        .route("/contracts/:id/check-usage", post(api::check_contract_usage))
+        .route("/contracts/:id/history", get(api::get_contract_history))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

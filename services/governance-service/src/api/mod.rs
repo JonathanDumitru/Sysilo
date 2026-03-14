@@ -14,6 +14,11 @@ use crate::standards::{CreateStandardRequest, UpdateStandardRequest};
 use crate::policies::{CreatePolicyRequest, UpdatePolicyRequest, EvaluatePoliciesRequest};
 use crate::approvals::{CreateWorkflowRequest, UpdateWorkflowRequest, CreateApprovalRequestInput, DecideRequest};
 use crate::audit::AuditQueryParams;
+use crate::federated::{
+    CreateDomainRequest, UpdateDomainRequest,
+    CreateDomainPolicyRequest, UpdateDomainPolicyRequest,
+    FederatedEvaluateRequest, InheritanceQueryParams, HealthTrendsParams,
+};
 
 // ============================================================================
 // Common Types

@@ -16,6 +16,7 @@ from ai_service.api import (
     health_router,
     traces_router,
     prompts_api_router,
+    drift_api_router,
 )
 from ai_service.db import init_db, close_db
 from ai_service.llm import init_llm_clients
@@ -83,6 +84,7 @@ app.include_router(insights_router, prefix="/insights", tags=["Insights"])
 app.include_router(embeddings_router, prefix="/embeddings", tags=["Embeddings"])
 app.include_router(traces_router, prefix="/traces", tags=["Traces"])
 app.include_router(prompts_api_router, prefix="/prompts", tags=["Prompts"])
+app.include_router(drift_api_router, prefix="/drift", tags=["Drift Detection"])
 
 
 if __name__ == "__main__":

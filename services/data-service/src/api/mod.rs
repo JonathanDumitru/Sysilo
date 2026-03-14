@@ -9,6 +9,11 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::catalog::{Entity, EntityType, Schema};
+use crate::contracts::{
+    AddTermRequest, CheckUsageRequest, CheckUsageResponse, ContractHistory, ContractTerm,
+    ContractValidationResult, ContractWithTerms, CreateContractRequest, ListContractsFilter,
+    SemanticContract, UpdateContractRequest, UpdateTermRequest, ValidationContext,
+};
 use crate::lineage::{LineageEdge, LineageEdgeType, LineageGraph, LineageNode, LineageQueryParams};
 use crate::quality::{
     QualityRule, QualityRuleInput, QualityScore, QualityCheckResult, QualityIssue, PiiScanResult,
@@ -438,6 +443,270 @@ pub async fn get_quality_issues(
         Ok(issues) => Ok(Json(issues)),
         Err(e) => {
             tracing::error!("Failed to get quality issues: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+// ============================================================================
+// Contract Endpoints
+// ============================================================================
+
+#[derive(Deserialize)]
+pub struct CreateContractApiRequest {
+    pub tenant_id: Uuid,
+    pub name: String,
+    pub description: String,
+    pub owner_id: Uuid,
+    pub entity_id: Option<Uuid>,
+}
+
+/// POST /contracts - Create a new semantic contract
+pub async fn create_contract(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateContractApiRequest>,
+) -> Result<Json<SemanticContract>, StatusCode> {
+    let request = CreateContractRequest {
+        name: req.name,
+        description: req.description,
+        owner_id: req.owner_id,
+        entity_id: req.entity_id,
+    };
+
+    match state.contracts.create_contract(req.tenant_id, request).await {
+        Ok(contract) => Ok(Json(contract)),
+        Err(e) => {
+            tracing::error!("Failed to create contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ListContractsQuery {
+    pub tenant_id: Uuid,
+    pub entity_id: Option<Uuid>,
+    pub status: Option<String>,
+}
+
+/// GET /contracts - List contracts with optional filters
+pub async fn list_contracts(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ListContractsQuery>,
+) -> Result<Json<Vec<SemanticContract>>, StatusCode> {
+    let filters = ListContractsFilter {
+        entity_id: query.entity_id,
+        status: query.status,
+    };
+
+    match state.contracts.list_contracts(query.tenant_id, filters).await {
+        Ok(contracts) => Ok(Json(contracts)),
+        Err(e) => {
+            tracing::error!("Failed to list contracts: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// GET /contracts/:id - Get a contract with all its terms
+pub async fn get_contract(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<ContractWithTerms>, StatusCode> {
+    match state.contracts.get_contract(query.tenant_id, id).await {
+        Ok(Some(contract)) => Ok(Json(contract)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to get contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct UpdateContractApiRequest {
+    pub tenant_id: Uuid,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub owner_id: Option<Uuid>,
+    pub entity_id: Option<Uuid>,
+}
+
+/// PUT /contracts/:id - Update a contract (bumps version)
+pub async fn update_contract(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateContractApiRequest>,
+) -> Result<Json<SemanticContract>, StatusCode> {
+    let request = UpdateContractRequest {
+        name: req.name,
+        description: req.description,
+        owner_id: req.owner_id,
+        entity_id: req.entity_id,
+    };
+
+    match state.contracts.update_contract(req.tenant_id, id, request).await {
+        Ok(Some(contract)) => Ok(Json(contract)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to update contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// POST /contracts/:id/activate - Activate a contract
+pub async fn activate_contract(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<SemanticContract>, StatusCode> {
+    match state.contracts.activate_contract(query.tenant_id, id).await {
+        Ok(Some(contract)) => Ok(Json(contract)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to activate contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// POST /contracts/:id/deprecate - Deprecate a contract
+pub async fn deprecate_contract(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<SemanticContract>, StatusCode> {
+    match state.contracts.deprecate_contract(query.tenant_id, id).await {
+        Ok(Some(contract)) => Ok(Json(contract)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to deprecate contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct AddTermApiRequest {
+    pub tenant_id: Uuid,
+    #[serde(flatten)]
+    pub term: AddTermRequest,
+}
+
+/// POST /contracts/:id/terms - Add a term to a contract
+pub async fn add_contract_term(
+    State(state): State<Arc<AppState>>,
+    Path(contract_id): Path<Uuid>,
+    Json(req): Json<AddTermApiRequest>,
+) -> Result<Json<ContractTerm>, StatusCode> {
+    // Verify contract exists and belongs to tenant
+    match state.contracts.get_contract(req.tenant_id, contract_id).await {
+        Ok(Some(_)) => {}
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to verify contract: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    match state.contracts.add_term(contract_id, req.term).await {
+        Ok(term) => Ok(Json(term)),
+        Err(e) => {
+            tracing::error!("Failed to add contract term: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// PUT /contracts/terms/:term_id - Update a contract term
+pub async fn update_contract_term(
+    State(state): State<Arc<AppState>>,
+    Path(term_id): Path<Uuid>,
+    Json(req): Json<UpdateTermRequest>,
+) -> Result<Json<ContractTerm>, StatusCode> {
+    match state.contracts.update_term(term_id, req).await {
+        Ok(Some(term)) => Ok(Json(term)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to update contract term: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// DELETE /contracts/terms/:term_id - Remove a contract term
+pub async fn remove_contract_term(
+    State(state): State<Arc<AppState>>,
+    Path(term_id): Path<Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    match state.contracts.remove_term(term_id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to remove contract term: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ValidateContractApiRequest {
+    pub tenant_id: Uuid,
+    #[serde(flatten)]
+    pub context: ValidationContext,
+}
+
+/// POST /contracts/:id/validate - Validate a contract at runtime
+pub async fn validate_contract(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ValidateContractApiRequest>,
+) -> Result<Json<ContractValidationResult>, StatusCode> {
+    match state.contracts.validate_contract(req.tenant_id, id, req.context).await {
+        Ok(Some(result)) => Ok(Json(result)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to validate contract: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct CheckUsageApiRequest {
+    pub tenant_id: Uuid,
+    #[serde(flatten)]
+    pub inner: CheckUsageRequest,
+}
+
+/// POST /contracts/:id/check-usage - Check if a use case is allowed
+pub async fn check_contract_usage(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<CheckUsageApiRequest>,
+) -> Result<Json<CheckUsageResponse>, StatusCode> {
+    match state.contracts.check_usage(req.tenant_id, id, &req.inner.use_case).await {
+        Ok(Some(result)) => Ok(Json(result)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check contract usage: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// GET /contracts/:id/history - Get contract version history
+pub async fn get_contract_history(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Query(query): Query<GetEntityQuery>,
+) -> Result<Json<Vec<ContractHistory>>, StatusCode> {
+    match state.contracts.get_contract_history(query.tenant_id, id).await {
+        Ok(history) => Ok(Json(history)),
+        Err(e) => {
+            tracing::error!("Failed to get contract history: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

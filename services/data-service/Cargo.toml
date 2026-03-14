@@ -32,7 +32,7 @@ rdkafka = { version = "0.36", features = ["cmake-build"] }
 
 # Utilities
 uuid = { version = "1.6", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = ">=0.4, <0.4.44", features = ["serde"] }
 thiserror = "1.0"
 anyhow = "1.0"
 
