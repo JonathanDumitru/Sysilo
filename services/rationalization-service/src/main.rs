@@ -121,6 +121,13 @@ async fn main() -> Result<()> {
         .route("/recommendations", get(api::list_recommendations))
         .route("/recommendations/generate", post(api::generate_recommendations))
         .route("/recommendations/:id", get(api::get_recommendation).put(api::update_recommendation_status))
+        // Live Scoring
+        .route("/live-scores", get(api::list_live_scores))
+        .route("/live-scores/event", post(api::submit_score_event))
+        .route("/live-scores/feed", get(api::get_score_feed))
+        .route("/live-scores/portfolio", get(api::get_live_portfolio_summary))
+        .route("/live-scores/:asset_id", get(api::get_live_score))
+        .route("/live-scores/:asset_id/drifts", get(api::get_live_score_drifts))
         // Analytics
         .route("/analytics/portfolio", get(api::get_portfolio_analytics))
         .route("/analytics/trends", get(api::get_score_trends))

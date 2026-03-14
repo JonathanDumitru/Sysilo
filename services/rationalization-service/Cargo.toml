@@ -29,6 +29,10 @@ anyhow = "1.0"
 thiserror = "1.0"
 async-trait = "0.1"
 
+# Message queue (use dynamic linking - requires librdkafka installed on system)
+rdkafka = { version = "0.36", default-features = false, features = ["tokio"] }
+tokio-stream = "0.1"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }

@@ -16,6 +16,7 @@ use uuid::Uuid;
 /// Status of a digital twin
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum TwinStatus {
     /// Twin is gathering historical data to build baseline
     Learning,
