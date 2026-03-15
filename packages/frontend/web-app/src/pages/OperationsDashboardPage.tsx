@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bell,
   CheckCircle,
@@ -7,6 +8,8 @@ import {
   TrendingUp,
   Loader2,
   AlertTriangle,
+  PlayCircle,
+  HeartPulse,
 } from 'lucide-react';
 import {
   useAlertInstances,
@@ -515,6 +518,29 @@ export function OperationsDashboardPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Quick Navigation */}
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
+        <h2 className="text-lg font-semibold text-white mb-4">Quick Navigation</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/operations/alerts" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <Bell className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Alerts</span>
+          </Link>
+          <Link to="/operations/incidents" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <AlertOctagon className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Incidents</span>
+          </Link>
+          <Link to="/operations/playbooks" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <PlayCircle className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Playbooks</span>
+          </Link>
+          <Link to="/operations/immune-system" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <HeartPulse className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Immune System</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

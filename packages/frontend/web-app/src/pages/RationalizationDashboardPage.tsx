@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   BarChart3,
   TrendingUp,
@@ -11,6 +11,9 @@ import {
   Minus,
   Loader2,
   AlertCircle,
+  GitBranch,
+  BookOpen,
+  FolderKanban,
 } from 'lucide-react';
 import {
   useTimeSummary,
@@ -451,6 +454,29 @@ export function RationalizationDashboardPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Quick Navigation */}
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
+        <h2 className="text-lg font-semibold text-white mb-4">Quick Navigation</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/rationalization/applications" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <Layers className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Applications</span>
+          </Link>
+          <Link to="/rationalization/scenarios" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <GitBranch className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Scenarios</span>
+          </Link>
+          <Link to="/rationalization/playbooks" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <BookOpen className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Playbooks</span>
+          </Link>
+          <Link to="/rationalization/projects" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+            <FolderKanban className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-300">Projects</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

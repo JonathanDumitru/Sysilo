@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Shield,
   FileCheck,
@@ -409,34 +410,34 @@ export function GovernanceDashboardPage() {
         <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
           <div className="space-y-2">
-            <a
-              href="/governance/policies"
+            <Link
+              to="/governance/policies"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <Scale className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-300">Manage Policies</span>
-            </a>
-            <a
-              href="/governance/standards"
+            </Link>
+            <Link
+              to="/governance/standards"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <BookOpen className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-300">View Standards</span>
-            </a>
-            <a
-              href="/governance/approvals"
+            </Link>
+            <Link
+              to="/governance/approvals"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <ClipboardCheck className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-300">Approval Workflows</span>
-            </a>
-            <a
-              href="/governance/audit"
+            </Link>
+            <Link
+              to="/governance/audit"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <FileCheck className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-300">Audit Log</span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
