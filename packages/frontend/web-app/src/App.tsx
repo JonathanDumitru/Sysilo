@@ -36,6 +36,7 @@ import { PlaybooksPage } from './pages/PlaybooksPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 // AI Components
 import { AIAssistButton } from './components/ai';
+import { AIAssistantPage } from './pages/AIAssistantPage';
 // Command Palette & Shortcuts
 import { CommandPalette } from './components/CommandPalette';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
@@ -118,6 +119,7 @@ function App() {
           <Route path="data-products" element={<DataProductsPage />} />
           <Route path="governance/compliance-api" element={<ComplianceApiPage />} />
           <Route path="operations/immune-system" element={<ImmuneSystemPage />} />
+          <Route path="ai" element={<AIAssistantPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

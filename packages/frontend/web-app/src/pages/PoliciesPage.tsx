@@ -139,28 +139,28 @@ export function PoliciesPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'high':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-orange-900/40 text-orange-400';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-900/40 text-yellow-400';
       case 'low':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/40 text-blue-400';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-surface-overlay text-gray-300';
     }
   };
 
   const getEnforcementColor = (enforcement: string) => {
     switch (enforcement) {
       case 'enforce':
-        return 'bg-red-50 text-red-700 border-red-200';
+        return 'bg-red-900/30 text-red-400 border-red-800';
       case 'warn':
-        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+        return 'bg-yellow-900/30 text-yellow-400 border-yellow-800';
       case 'audit':
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return 'bg-surface-overlay/50 text-gray-300 border-surface-border';
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return 'bg-surface-overlay/50 text-gray-300 border-surface-border';
     }
   };
 
@@ -191,7 +191,7 @@ export function PoliciesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Policies</h1>
+          <h1 className="text-2xl font-bold text-white">Policies</h1>
           <p className="text-gray-500">Define and enforce governance policies using Rego</p>
         </div>
         <button
@@ -204,18 +204,18 @@ export function PoliciesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-surface-border">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('policies')}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'policies'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Policies
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-surface-overlay text-gray-300">
               {policies.length}
             </span>
           </button>
@@ -224,11 +224,11 @@ export function PoliciesPage() {
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'violations'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Violations
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-900/40 text-red-400">
               {violations.filter((v) => v.status === 'open').length}
             </span>
           </button>
@@ -244,13 +244,13 @@ export function PoliciesPage() {
             placeholder="Search policies..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
         <select
           value={scopeFilter}
           onChange={(e) => setScopeFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 glass-input text-sm"
         >
           <option value="all">All Scopes</option>
           <option value="integration">Integration</option>
@@ -266,13 +266,13 @@ export function PoliciesPage() {
           {policies.map((policy) => (
             <div
               key={policy.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              className="glass-panel p-6"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                   <div
                     className={`p-2 rounded-lg ${
-                      policy.enabled ? 'bg-primary-50' : 'bg-gray-100'
+                      policy.enabled ? 'bg-primary-900/30' : 'bg-surface-overlay'
                     }`}
                   >
                     <Scale
@@ -283,9 +283,9 @@ export function PoliciesPage() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{policy.name}</h3>
+                      <h3 className="text-lg font-semibold text-white">{policy.name}</h3>
                       {!policy.enabled && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-overlay text-gray-500">
                           Disabled
                         </span>
                       )}
@@ -333,12 +333,12 @@ export function PoliciesPage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setSelectedPolicy(policy)}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                      className="p-2 text-gray-400 hover:text-gray-300 hover:bg-surface-overlay rounded-lg"
                       title="View Policy"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <button className="p-2 text-gray-400 hover:text-gray-300 hover:bg-surface-overlay rounded-lg">
                       <MoreVertical className="w-4 h-4" />
                     </button>
                   </div>
@@ -351,9 +351,9 @@ export function PoliciesPage() {
 
       {/* Violations Tab */}
       {activeTab === 'violations' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="glass-panel overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-surface-overlay/50">
               <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Policy</th>
@@ -364,9 +364,9 @@ export function PoliciesPage() {
                 <th className="px-6 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-surface-border">
               {violations.map((violation) => (
-                <tr key={violation.id} className="hover:bg-gray-50">
+                <tr key={violation.id} className="hover:bg-surface-overlay/50">
                   <td className="px-6 py-4">
                     {violation.status === 'open' ? (
                       <span className="flex items-center gap-1 text-red-600">
@@ -381,16 +381,16 @@ export function PoliciesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-900">{violation.policyName}</span>
+                    <span className="text-sm font-medium text-white">{violation.policyName}</span>
                   </td>
                   <td className="px-6 py-4">
                     <div>
                       <span className="text-xs text-gray-500">{violation.resourceType}</span>
-                      <p className="text-sm font-mono text-gray-700">{violation.resourceId}</p>
+                      <p className="text-sm font-mono text-gray-300">{violation.resourceId}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{violation.details}</span>
+                    <span className="text-sm text-gray-400">{violation.details}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -421,15 +421,15 @@ export function PoliciesPage() {
       {/* Policy Detail Modal */}
       {selectedPolicy && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="glass-panel w-full max-w-3xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-surface-border">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">{selectedPolicy.name}</h2>
+                <h2 className="text-lg font-semibold text-white">{selectedPolicy.name}</h2>
                 <p className="text-sm text-gray-500">{selectedPolicy.description}</p>
               </div>
               <button
                 onClick={() => setSelectedPolicy(null)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -457,17 +457,17 @@ export function PoliciesPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Code className="w-4 h-4 text-gray-500" />
-                  <h3 className="text-sm font-medium text-gray-900">Rego Policy</h3>
+                  <h3 className="text-sm font-medium text-white">Rego Policy</h3>
                 </div>
                 <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg text-sm overflow-x-auto">
                   <code>{selectedPolicy.rego}</code>
                 </pre>
               </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
+            <div className="flex justify-end gap-3 p-6 border-t border-surface-border">
               <button
                 onClick={() => setSelectedPolicy(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
               >
                 Close
               </button>
@@ -482,37 +482,37 @@ export function PoliciesPage() {
       {/* Create Policy Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-2xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Policy</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="Enter policy name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="Brief description of the policy"
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Scope</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option value="integration">Integration</option>
                     <option value="connection">Connection</option>
                     <option value="agent">Agent</option>
@@ -521,16 +521,16 @@ export function PoliciesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Enforcement</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Enforcement</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option value="enforce">Enforce (Block)</option>
                     <option value="warn">Warn</option>
                     <option value="audit">Audit Only</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Severity</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option value="critical">Critical</option>
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
@@ -539,9 +539,9 @@ export function PoliciesPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rego Policy</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Rego Policy</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm font-mono text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   rows={8}
                   placeholder={`package policy
 
@@ -554,7 +554,7 @@ deny[msg] {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

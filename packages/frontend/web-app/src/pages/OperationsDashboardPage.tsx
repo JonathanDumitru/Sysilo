@@ -63,15 +63,15 @@ function getTimeRangeStart(range: string): string {
 function getSeverityColor(severity: string) {
   switch (severity) {
     case 'critical':
-      return 'bg-red-100 text-red-700 border-red-200';
+      return 'bg-red-900/40 text-red-400 border-red-800';
     case 'high':
-      return 'bg-orange-100 text-orange-700 border-orange-200';
+      return 'bg-orange-900/40 text-orange-400 border-orange-800';
     case 'medium':
-      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      return 'bg-yellow-900/40 text-yellow-400 border-yellow-800';
     case 'low':
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+      return 'bg-blue-900/40 text-blue-400 border-blue-800';
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-200';
+      return 'bg-gray-700/50 text-gray-300 border-surface-border';
   }
 }
 
@@ -79,13 +79,13 @@ function getSeverityColor(severity: string) {
 
 function LoadingSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+    <div className={`animate-pulse bg-gray-700 rounded ${className}`} />
   );
 }
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    <div className="flex items-center gap-2 p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400">
       <AlertTriangle className="w-4 h-4 flex-shrink-0" />
       <span>{message}</span>
     </div>
@@ -208,14 +208,14 @@ export function OperationsDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Operations Center</h1>
+          <h1 className="text-2xl font-bold text-white">Operations Center</h1>
           <p className="text-gray-500">Real-time monitoring and incident management</p>
         </div>
         <div className="flex items-center gap-3">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 glass-input text-sm"
           >
             <option value="1h">Last 1 hour</option>
             <option value="6h">Last 6 hours</option>
@@ -233,21 +233,21 @@ export function OperationsDashboardPage() {
 
       {/* Create Incident Modal */}
       {showCreateIncident && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Incident</h2>
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
+          <h2 className="text-lg font-semibold text-white mb-4">Create Incident</h2>
           <div className="space-y-3">
             <input
               type="text"
               placeholder="Incident title"
               value={newIncident.title}
               onChange={(e) => setNewIncident({ ...newIncident, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 glass-input text-sm"
             />
             <textarea
               placeholder="Description"
               value={newIncident.description}
               onChange={(e) => setNewIncident({ ...newIncident, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 glass-input text-sm"
               rows={3}
             />
             <select
@@ -255,7 +255,7 @@ export function OperationsDashboardPage() {
               onChange={(e) =>
                 setNewIncident({ ...newIncident, severity: e.target.value as 'critical' | 'high' | 'medium' | 'low' | 'info' })
               }
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 glass-input text-sm"
             >
               <option value="critical">Critical</option>
               <option value="high">High</option>
@@ -273,7 +273,7 @@ export function OperationsDashboardPage() {
               </button>
               <button
                 onClick={() => setShowCreateIncident(false)}
-                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5"
               >
                 Cancel
               </button>
@@ -298,10 +298,10 @@ export function OperationsDashboardPage() {
         {keyMetrics.map((metric) => (
           <div
             key={metric.name}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+            className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-primary-50 rounded-lg">
+              <div className="p-2 bg-primary-900/30 rounded-lg">
                 <metric.icon className="w-5 h-5 text-primary-600" />
               </div>
               {metric.trend && (
@@ -318,7 +318,7 @@ export function OperationsDashboardPage() {
               {metricsQuery.isLoading ? (
                 <LoadingSkeleton className="h-8 w-20" />
               ) : (
-                <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
+                <p className="text-3xl font-bold text-white">{metric.value}</p>
               )}
               <p className="text-sm font-medium text-gray-500">{metric.name}</p>
             </div>
@@ -329,9 +329,9 @@ export function OperationsDashboardPage() {
       {/* System Health & Alert Summary */}
       <div className="grid grid-cols-3 gap-6">
         {/* System Health - static since this comes from a different source */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">System Health</h2>
+            <h2 className="text-lg font-semibold text-white">System Health</h2>
             <span className="flex items-center gap-1 text-sm font-medium text-green-600">
               <CheckCircle className="w-4 h-4" />
               healthy
@@ -346,7 +346,7 @@ export function OperationsDashboardPage() {
             ].map((service) => (
               <div
                 key={service.name}
-                className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-surface-border last:border-0"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -354,7 +354,7 @@ export function OperationsDashboardPage() {
                       service.status === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
                     }`}
                   />
-                  <span className="text-sm text-gray-700">{service.name}</span>
+                  <span className="text-sm text-gray-300">{service.name}</span>
                 </div>
                 <span className="text-xs text-gray-500">{service.latency}</span>
               </div>
@@ -363,8 +363,8 @@ export function OperationsDashboardPage() {
         </div>
 
         {/* Alert Summary */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Alert Summary</h2>
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
+          <h2 className="text-lg font-semibold text-white mb-4">Alert Summary</h2>
           {alertsQuery.isLoading ? (
             <div className="grid grid-cols-2 gap-3">
               {[1, 2, 3, 4].map((i) => (
@@ -373,20 +373,20 @@ export function OperationsDashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-                <p className="text-2xl font-bold text-red-700">{alertSummary.critical}</p>
+              <div className="p-3 bg-red-900/30 rounded-lg border border-red-900/50">
+                <p className="text-2xl font-bold text-red-400">{alertSummary.critical}</p>
                 <p className="text-xs text-red-600">Critical</p>
               </div>
-              <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
-                <p className="text-2xl font-bold text-orange-700">{alertSummary.high}</p>
+              <div className="p-3 bg-orange-900/30 rounded-lg border border-orange-900/50">
+                <p className="text-2xl font-bold text-orange-400">{alertSummary.high}</p>
                 <p className="text-xs text-orange-600">High</p>
               </div>
-              <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                <p className="text-2xl font-bold text-yellow-700">{alertSummary.medium}</p>
+              <div className="p-3 bg-yellow-900/30 rounded-lg border border-yellow-900/50">
+                <p className="text-2xl font-bold text-yellow-400">{alertSummary.medium}</p>
                 <p className="text-xs text-yellow-600">Medium</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-2xl font-bold text-blue-700">{alertSummary.low}</p>
+              <div className="p-3 bg-blue-900/30 rounded-lg border border-blue-900/50">
+                <p className="text-2xl font-bold text-blue-400">{alertSummary.low}</p>
                 <p className="text-xs text-blue-600">Low</p>
               </div>
             </div>
@@ -394,9 +394,9 @@ export function OperationsDashboardPage() {
         </div>
 
         {/* Active Incidents */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Active Incidents</h2>
+            <h2 className="text-lg font-semibold text-white">Active Incidents</h2>
             <a href="/operations/incidents" className="text-sm text-primary-600 hover:text-primary-700">
               View all
             </a>
@@ -414,12 +414,12 @@ export function OperationsDashboardPage() {
               {incidents.map((incident) => (
                 <div
                   key={incident.id}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                  className="p-3 bg-surface-overlay/50 rounded-lg border border-surface-border"
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-xs font-mono text-gray-500">{incident.id.slice(0, 8)}</span>
-                      <p className="text-sm font-medium text-gray-900">{incident.title}</p>
+                      <p className="text-sm font-medium text-white">{incident.title}</p>
                     </div>
                     <span
                       className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
@@ -441,9 +441,9 @@ export function OperationsDashboardPage() {
       </div>
 
       {/* Recent Alerts */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Alerts</h2>
+          <h2 className="text-lg font-semibold text-white">Recent Alerts</h2>
           <a href="/operations/alerts" className="text-sm text-primary-600 hover:text-primary-700">
             View all alerts
           </a>
@@ -469,10 +469,10 @@ export function OperationsDashboardPage() {
                   <th className="pb-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-surface-border">
                 {alerts.map((alert) => (
                   <tr key={alert.id} className="text-sm">
-                    <td className="py-3 font-medium text-gray-900">{alert.rule_name}</td>
+                    <td className="py-3 font-medium text-white">{alert.rule_name}</td>
                     <td className="py-3">
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
@@ -482,7 +482,7 @@ export function OperationsDashboardPage() {
                         {alert.severity}
                       </span>
                     </td>
-                    <td className="py-3 text-gray-600">{alert.metric_name}</td>
+                    <td className="py-3 text-gray-400">{alert.metric_name}</td>
                     <td className="py-3">
                       <span
                         className={`flex items-center gap-1 text-xs font-medium ${

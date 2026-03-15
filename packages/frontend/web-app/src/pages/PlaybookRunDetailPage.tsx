@@ -19,12 +19,12 @@ import {
 import type { RunStatus, StepStatus } from '@/services/playbooks';
 
 const runStatusConfig: Record<RunStatus, { label: string; icon: React.ElementType; color: string }> = {
-  pending: { label: 'Pending', icon: Clock, color: 'text-gray-600 bg-gray-100' },
-  running: { label: 'Running', icon: Loader2, color: 'text-blue-600 bg-blue-100' },
-  waiting_approval: { label: 'Waiting Approval', icon: Pause, color: 'text-amber-600 bg-amber-100' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-600 bg-green-100' },
-  failed: { label: 'Failed', icon: XCircle, color: 'text-red-600 bg-red-100' },
-  cancelled: { label: 'Cancelled', icon: XCircle, color: 'text-gray-600 bg-gray-100' },
+  pending: { label: 'Pending', icon: Clock, color: 'text-gray-400 bg-surface-overlay' },
+  running: { label: 'Running', icon: Loader2, color: 'text-blue-400 bg-blue-900/40' },
+  waiting_approval: { label: 'Waiting Approval', icon: Pause, color: 'text-amber-400 bg-amber-900/40' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-400 bg-green-900/40' },
+  failed: { label: 'Failed', icon: XCircle, color: 'text-red-400 bg-red-900/40' },
+  cancelled: { label: 'Cancelled', icon: XCircle, color: 'text-gray-400 bg-surface-overlay' },
 };
 
 const stepStatusConfig: Record<StepStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -65,7 +65,7 @@ export function PlaybookRunDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertCircle className="w-12 h-12 text-red-500" />
-        <p className="text-gray-600">Failed to load run details</p>
+        <p className="text-gray-400">Failed to load run details</p>
         <button
           onClick={() => navigate('/operations/playbooks')}
           className="text-primary-600 hover:text-primary-700"
@@ -87,14 +87,14 @@ export function PlaybookRunDetailPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/operations/playbooks/${playbookId}/edit`)}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm"
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-200 text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Playbook
           </button>
-          <div className="h-6 w-px bg-gray-200" />
+          <div className="h-6 w-px bg-surface-border" />
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Run Details</h1>
+            <h1 className="text-xl font-semibold text-white">Run Details</h1>
             <p className="text-sm text-gray-500">Run ID: {run.id.slice(0, 8)}...</p>
           </div>
         </div>
@@ -105,11 +105,11 @@ export function PlaybookRunDetailPage() {
       </div>
 
       {/* Run Info Card */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-surface-raised/80 rounded-lg border border-surface-border p-6">
         <div className="grid grid-cols-3 gap-6">
           <div>
             <p className="text-sm text-gray-500">Started</p>
-            <p className="mt-1 text-sm font-medium text-gray-900">
+            <p className="mt-1 text-sm font-medium text-white">
               {run.started_at
                 ? new Date(run.started_at).toLocaleString()
                 : 'Not started yet'}
@@ -117,7 +117,7 @@ export function PlaybookRunDetailPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Completed</p>
-            <p className="mt-1 text-sm font-medium text-gray-900">
+            <p className="mt-1 text-sm font-medium text-white">
               {run.completed_at
                 ? new Date(run.completed_at).toLocaleString()
                 : '-'}
@@ -125,7 +125,7 @@ export function PlaybookRunDetailPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Duration</p>
-            <p className="mt-1 text-sm font-medium text-gray-900">
+            <p className="mt-1 text-sm font-medium text-white">
               {run.started_at && run.completed_at
                 ? `${Math.round((new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000)}s`
                 : run.started_at
@@ -137,13 +137,13 @@ export function PlaybookRunDetailPage() {
 
         {/* Approval Actions */}
         {isWaitingApproval && (
-          <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-100">
-            <p className="text-sm font-medium text-amber-800 mb-3">This run is waiting for approval</p>
+          <div className="mt-6 p-4 bg-amber-900/30 rounded-lg border border-amber-900/50">
+            <p className="text-sm font-medium text-amber-400 mb-3">This run is waiting for approval</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleApprove}
                 disabled={approveMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-400 bg-green-900/40 rounded-lg hover:bg-green-900/60 disabled:opacity-50"
               >
                 <ThumbsUp className="w-4 h-4" />
                 Approve
@@ -151,7 +151,7 @@ export function PlaybookRunDetailPage() {
               <button
                 onClick={handleReject}
                 disabled={rejectMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-400 bg-red-900/40 rounded-lg hover:bg-red-900/60 disabled:opacity-50"
               >
                 <ThumbsDown className="w-4 h-4" />
                 Reject
@@ -161,8 +161,8 @@ export function PlaybookRunDetailPage() {
         )}
 
         {run.status === 'failed' && run.step_states && (
-          <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100">
-            <p className="text-sm font-medium text-red-800">Error Details</p>
+          <div className="mt-4 p-4 bg-red-900/30 rounded-lg border border-red-900/50">
+            <p className="text-sm font-medium text-red-400">Error Details</p>
             <p className="mt-1 text-sm text-red-600">
               {run.step_states.find(s => s.error)?.error || 'Unknown error'}
             </p>
@@ -171,11 +171,11 @@ export function PlaybookRunDetailPage() {
       </div>
 
       {/* Steps Timeline */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Steps</h2>
+      <div className="bg-surface-raised/80 rounded-lg border border-surface-border">
+        <div className="px-6 py-4 border-b border-surface-border">
+          <h2 className="text-lg font-medium text-white">Steps</h2>
         </div>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-surface-border">
           {run.step_states && run.step_states.length > 0 ? (
             run.step_states.map((stepState, index) => {
               const stepStatusInfo = stepStatusConfig[stepState.status];
@@ -184,14 +184,14 @@ export function PlaybookRunDetailPage() {
               return (
                 <div key={stepState.step_id} className="px-6 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-sm font-medium">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-overlay text-gray-400 text-sm font-medium">
                       {index + 1}
                     </div>
                     <div className={`p-2 rounded-full bg-opacity-10 ${stepStatusInfo.color.replace('text-', 'bg-').split(' ')[0]}`}>
                       <StepIcon className={`w-5 h-5 ${stepStatusInfo.color} ${stepState.status === 'running' ? 'animate-spin' : ''}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Step {stepState.step_id}</p>
+                      <p className="text-sm font-medium text-white">Step {stepState.step_id}</p>
                       <p className="text-xs text-gray-500">{stepStatusInfo.label}</p>
                       {stepState.error && (
                         <p className="text-xs text-red-500 mt-1">{stepState.error}</p>

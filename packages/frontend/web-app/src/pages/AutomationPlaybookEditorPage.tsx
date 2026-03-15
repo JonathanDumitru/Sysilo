@@ -267,7 +267,7 @@ function PlaybookEditorContent() {
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center -m-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <AlertCircle className="w-12 h-12 text-red-500" />
-          <h2 className="text-lg font-semibold text-gray-900">Failed to load playbook</h2>
+          <h2 className="text-lg font-semibold text-white">Failed to load playbook</h2>
           <p className="text-sm text-gray-500">
             {loadError instanceof Error ? loadError.message : 'An unexpected error occurred'}
           </p>
@@ -288,21 +288,21 @@ function PlaybookEditorContent() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col -m-6">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-raised/80 backdrop-blur-glass">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/operations/playbooks')}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm"
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-200 text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <div className="h-6 w-px bg-gray-200" />
+          <div className="h-6 w-px bg-surface-border" />
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="text-lg font-semibold border-none focus:ring-0 focus:outline-none bg-transparent"
+            className="text-lg font-semibold border-none focus:ring-0 focus:outline-none bg-transparent text-white"
             placeholder="Playbook name"
             aria-label="Playbook name"
           />
@@ -318,7 +318,7 @@ function PlaybookEditorContent() {
             <button
               onClick={handleRun}
               disabled={isRunning || isSaving}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-900/30 rounded-lg hover:bg-primary-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-4 h-4" />
               {isRunning ? 'Running...' : 'Run'}
@@ -342,7 +342,7 @@ function PlaybookEditorContent() {
 
         {/* React Flow canvas */}
         <div
-          className="flex-1 bg-gray-50"
+          className="flex-1 bg-surface-overlay/50"
           onDragOver={onDragOver}
           onDrop={onDrop}
         >
@@ -366,17 +366,17 @@ function PlaybookEditorContent() {
               nodeStrokeWidth={3}
               zoomable
               pannable
-              className="bg-white border border-gray-200 rounded-lg"
+              className="bg-surface-raised/80 border border-surface-border rounded-lg"
             />
-            <Panel position="top-right" className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <Panel position="top-right" className="bg-surface-raised/80 rounded-lg shadow-glass border border-surface-border p-2">
               <div className="text-xs text-gray-500">
                 {nodes.length} steps &middot; {edges.length} connections
               </div>
             </Panel>
             {nodes.length === 0 && (
               <Panel position="top-center" className="mt-20">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center max-w-md">
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">
+                <div className="bg-surface-raised/80 rounded-lg shadow-glass border border-surface-border p-6 text-center max-w-md">
+                  <h3 className="text-sm font-medium text-white mb-1">
                     Start building your playbook
                   </h3>
                   <p className="text-xs text-gray-500">

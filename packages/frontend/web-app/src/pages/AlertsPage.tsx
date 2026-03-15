@@ -110,15 +110,15 @@ export function AlertsPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'high':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-orange-900/40 text-orange-400';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-900/40 text-yellow-400';
       case 'low':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/40 text-blue-400';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300';
     }
   };
 
@@ -162,7 +162,7 @@ export function AlertsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Alerts</h1>
+          <h1 className="text-2xl font-bold text-white">Alerts</h1>
           <p className="text-gray-500">Manage alert rules and view triggered alerts</p>
         </div>
         <button
@@ -175,18 +175,18 @@ export function AlertsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-surface-border">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('instances')}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'instances'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Alert Instances
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-900/40 text-red-400">
               {alertInstances.filter((a) => a.status === 'firing').length}
             </span>
           </button>
@@ -195,11 +195,11 @@ export function AlertsPage() {
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'rules'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Alert Rules
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-700/50 text-gray-300">
               {alertRules.length}
             </span>
           </button>
@@ -215,13 +215,13 @@ export function AlertsPage() {
             placeholder="Search alerts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
         <select
           value={severityFilter}
           onChange={(e) => setSeverityFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 glass-input text-sm"
         >
           <option value="all">All Severities</option>
           <option value="critical">Critical</option>
@@ -233,7 +233,7 @@ export function AlertsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 glass-input text-sm"
           >
             <option value="all">All Statuses</option>
             <option value="firing">Firing</option>
@@ -245,9 +245,9 @@ export function AlertsPage() {
 
       {/* Alert Instances Tab */}
       {activeTab === 'instances' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border border-surface-border overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-surface-overlay/50">
               <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Alert</th>
@@ -258,9 +258,9 @@ export function AlertsPage() {
                 <th className="px-6 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-surface-border">
               {alertInstances.map((alert) => (
-                <tr key={alert.id} className="hover:bg-gray-50">
+                <tr key={alert.id} className="hover:bg-white/5">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(alert.status)}
@@ -268,7 +268,7 @@ export function AlertsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-900">{alert.ruleName}</span>
+                    <span className="text-sm font-medium text-white">{alert.ruleName}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -279,8 +279,8 @@ export function AlertsPage() {
                       {alert.severity}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{alert.resource}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-400">{alert.resource}</td>
+                  <td className="px-6 py-4 text-sm font-mono text-gray-400">
                     {alert.triggeredValue}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -298,7 +298,7 @@ export function AlertsPage() {
                           Resolve
                         </button>
                       )}
-                      <button className="text-xs font-medium text-gray-500 hover:text-gray-700">
+                      <button className="text-xs font-medium text-gray-500 hover:text-gray-200">
                         Create Incident
                       </button>
                     </div>
@@ -316,13 +316,13 @@ export function AlertsPage() {
           {alertRules.map((rule) => (
             <div
               key={rule.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                   <div
                     className={`p-2 rounded-lg ${
-                      rule.enabled ? 'bg-primary-50' : 'bg-gray-100'
+                      rule.enabled ? 'bg-primary-900/30' : 'bg-surface-overlay'
                     }`}
                   >
                     <Bell
@@ -333,7 +333,7 @@ export function AlertsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{rule.name}</h3>
+                      <h3 className="text-lg font-semibold text-white">{rule.name}</h3>
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
                           rule.severity
@@ -342,7 +342,7 @@ export function AlertsPage() {
                         {rule.severity}
                       </span>
                       {!rule.enabled && (
-                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-500">
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-700/50 text-gray-400">
                           Disabled
                         </span>
                       )}
@@ -351,7 +351,7 @@ export function AlertsPage() {
                     <div className="flex items-center gap-4 mt-3">
                       <span className="text-xs text-gray-500">
                         Condition:{' '}
-                        <code className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">
+                        <code className="px-1.5 py-0.5 bg-surface-overlay rounded text-gray-300">
                           {rule.metric} {getConditionLabel(rule.condition)} {rule.threshold}
                         </code>
                       </span>
@@ -360,7 +360,7 @@ export function AlertsPage() {
                         {rule.channels.map((ch) => (
                           <span
                             key={ch}
-                            className="inline-block px-1.5 py-0.5 bg-gray-100 rounded text-gray-700 mr-1"
+                            className="inline-block px-1.5 py-0.5 bg-surface-overlay rounded text-gray-300 mr-1"
                           >
                             {ch}
                           </span>
@@ -370,7 +370,7 @@ export function AlertsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                  <button className="p-2 text-gray-400 hover:text-gray-300">
                     <MoreVertical className="w-5 h-5" />
                   </button>
                 </div>
@@ -383,28 +383,28 @@ export function AlertsPage() {
       {/* Create Alert Rule Modal (placeholder) */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Alert Rule</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="Enter alert name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Metric</label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Metric</label>
+                <select className="w-full px-3 py-2 glass-input text-sm">
                   <option>cpu_usage</option>
                   <option>memory_usage</option>
                   <option>failure_rate</option>
@@ -413,25 +413,25 @@ export function AlertsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Condition</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option value="gt">Greater than</option>
                     <option value="lt">Less than</option>
                     <option value="eq">Equal to</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Threshold</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Threshold</label>
                   <input
                     type="number"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 glass-input text-sm"
                     placeholder="80"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Severity</label>
+                <select className="w-full px-3 py-2 glass-input text-sm">
                   <option value="critical">Critical</option>
                   <option value="high">High</option>
                   <option value="medium">Medium</option>
@@ -441,7 +441,7 @@ export function AlertsPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

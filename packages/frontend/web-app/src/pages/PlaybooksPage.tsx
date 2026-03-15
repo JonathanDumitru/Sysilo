@@ -151,12 +151,12 @@ const playbooks = [
 ];
 
 const strategyColors: Record<string, string> = {
-  rehost: 'bg-blue-100 text-blue-700 border-blue-200',
-  replatform: 'bg-purple-100 text-purple-700 border-purple-200',
-  refactor: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  replace: 'bg-orange-100 text-orange-700 border-orange-200',
-  retire: 'bg-red-100 text-red-700 border-red-200',
-  retain: 'bg-gray-100 text-gray-700 border-gray-200',
+  rehost: 'bg-blue-900/40 text-blue-400 border-blue-800',
+  replatform: 'bg-purple-900/40 text-purple-400 border-purple-800',
+  refactor: 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50',
+  replace: 'bg-orange-900/40 text-orange-400 border-orange-800',
+  retire: 'bg-red-900/40 text-red-400 border-red-800',
+  retain: 'bg-gray-700/50 text-gray-300 border-surface-border',
 };
 
 const strategyDescriptions: Record<string, string> = {
@@ -194,7 +194,7 @@ export function PlaybooksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Migration Playbooks</h1>
+          <h1 className="text-2xl font-bold text-white">Migration Playbooks</h1>
           <p className="text-gray-500">Standardized templates for application rationalization</p>
         </div>
         <button
@@ -215,7 +215,7 @@ export function PlaybooksPage() {
             className={`p-3 rounded-xl border-2 text-left transition-all ${
               strategyFilter === strategy
                 ? color + ' ring-2 ring-offset-1'
-                : 'bg-white border-gray-100 hover:border-gray-200'
+                : 'bg-surface-raised/80 border-surface-border hover:border-gray-600'
             }`}
           >
             <p className="text-sm font-semibold capitalize mb-1">{strategy}</p>
@@ -233,10 +233,10 @@ export function PlaybooksPage() {
             placeholder="Search playbooks..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
           />
         </div>
-        <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <select className="px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none">
           <option value="all">All Types</option>
           <option value="template">Templates</option>
           <option value="custom">Custom</option>
@@ -253,22 +253,22 @@ export function PlaybooksPage() {
               <div
                 key={playbook.id}
                 onClick={() => setSelectedPlaybook(playbook)}
-                className={`bg-white rounded-xl p-5 shadow-sm border cursor-pointer transition-all ${
+                className={`bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border p-5 cursor-pointer transition-all ${
                   selectedPlaybook?.id === playbook.id
-                    ? 'border-primary-500 ring-2 ring-primary-100'
-                    : 'border-gray-100 hover:border-gray-200'
+                    ? 'border-primary-500 ring-2 ring-primary-900/50'
+                    : 'border-surface-border hover:border-gray-600'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-primary-50 rounded-lg">
+                    <div className="p-2 bg-primary-900/30 rounded-lg">
                       <BookOpen className="w-5 h-5 text-primary-600" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">{playbook.name}</h3>
+                        <h3 className="font-semibold text-white">{playbook.name}</h3>
                         {playbook.isTemplate && (
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-900/40 text-purple-400 rounded">
                             Template
                           </span>
                         )}
@@ -279,7 +279,7 @@ export function PlaybooksPage() {
                   <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 </div>
 
-                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-surface-border">
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full border capitalize ${strategyColors[playbook.strategy]}`}
                   >
@@ -295,10 +295,10 @@ export function PlaybooksPage() {
         </div>
 
         {/* Detail Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border border-surface-border h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {selectedPlaybook ? (
             <div>
-              <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div className="p-6 border-b border-surface-border sticky top-0 bg-surface-raised/80 z-10">
                 <div className="flex items-center justify-between mb-3">
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full border capitalize ${strategyColors[selectedPlaybook.strategy]}`}
@@ -307,35 +307,35 @@ export function PlaybooksPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">v{selectedPlaybook.version}</span>
-                    <button className="p-1.5 text-gray-400 hover:text-gray-600 rounded">
+                    <button className="p-1.5 text-gray-400 hover:text-gray-300 rounded">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button className="p-1.5 text-gray-400 hover:text-gray-600 rounded">
+                    <button className="p-1.5 text-gray-400 hover:text-gray-300 rounded">
                       <Copy className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                <h2 className="text-xl font-semibold text-white mb-2">
                   {selectedPlaybook.name}
                 </h2>
-                <p className="text-sm text-gray-600">{selectedPlaybook.description}</p>
+                <p className="text-sm text-gray-400">{selectedPlaybook.description}</p>
 
                 {/* Summary Stats */}
                 <div className="grid grid-cols-3 gap-3 mt-4">
-                  <div className="p-2 bg-gray-50 rounded-lg text-center">
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="p-2 bg-surface-overlay/50 rounded-lg text-center">
+                    <p className="text-lg font-semibold text-white">
                       {selectedPlaybook.phases.length}
                     </p>
                     <p className="text-xs text-gray-500">Phases</p>
                   </div>
-                  <div className="p-2 bg-gray-50 rounded-lg text-center">
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="p-2 bg-surface-overlay/50 rounded-lg text-center">
+                    <p className="text-lg font-semibold text-white">
                       {getTotalTasks(selectedPlaybook)}
                     </p>
                     <p className="text-xs text-gray-500">Tasks</p>
                   </div>
-                  <div className="p-2 bg-gray-50 rounded-lg text-center">
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="p-2 bg-surface-overlay/50 rounded-lg text-center">
+                    <p className="text-lg font-semibold text-white">
                       {getTotalHours(selectedPlaybook)}h
                     </p>
                     <p className="text-xs text-gray-500">Est. Hours</p>
@@ -345,30 +345,30 @@ export function PlaybooksPage() {
 
               {/* Phases */}
               <div className="p-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Phases & Tasks</h3>
+                <h3 className="text-sm font-medium text-white mb-4">Phases & Tasks</h3>
                 <div className="space-y-4">
                   {selectedPlaybook.phases.map((phase, phaseIndex) => (
-                    <div key={phase.id} className="border border-gray-100 rounded-lg overflow-hidden">
-                      <div className="p-3 bg-gray-50 border-b border-gray-100">
+                    <div key={phase.id} className="border border-surface-border rounded-lg overflow-hidden">
+                      <div className="p-3 bg-surface-overlay/50 border-b border-surface-border">
                         <div className="flex items-center gap-2">
-                          <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                          <span className="flex items-center justify-center w-6 h-6 bg-primary-900/40 text-primary-400 text-xs font-medium rounded-full">
                             {phaseIndex + 1}
                           </span>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{phase.name}</p>
+                            <p className="text-sm font-medium text-white">{phase.name}</p>
                             <p className="text-xs text-gray-500">{phase.description}</p>
                           </div>
                         </div>
                       </div>
-                      <div className="divide-y divide-gray-50">
+                      <div className="divide-y divide-surface-border">
                         {phase.tasks.map((task) => (
                           <div
                             key={task.id}
                             className="px-3 py-2 flex items-center justify-between"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 rounded border border-gray-300" />
-                              <span className="text-sm text-gray-700">{task.name}</span>
+                              <div className="w-4 h-4 rounded border border-surface-border" />
+                              <span className="text-sm text-gray-300">{task.name}</span>
                             </div>
                             <span className="text-xs text-gray-500">{task.estimatedHours}h</span>
                           </div>
@@ -380,7 +380,7 @@ export function PlaybooksPage() {
               </div>
 
               {/* Actions */}
-              <div className="p-6 border-t border-gray-100 sticky bottom-0 bg-white">
+              <div className="p-6 border-t border-surface-border sticky bottom-0 bg-surface-raised/80">
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                   <span>Created {formatDate(selectedPlaybook.createdAt)}</span>
                   <span>Updated {formatDate(selectedPlaybook.updatedAt)}</span>
@@ -390,7 +390,7 @@ export function PlaybooksPage() {
                     <Play className="w-4 h-4" />
                     Start Project
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-surface-overlay/50">
                     <Copy className="w-4 h-4" />
                     Duplicate
                   </button>
@@ -399,7 +399,7 @@ export function PlaybooksPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-gray-500">
-              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-600" />
               <p>Select a playbook to view details</p>
             </div>
           )}
@@ -409,28 +409,28 @@ export function PlaybooksPage() {
       {/* Create Playbook Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Playbook</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   placeholder="e.g., Custom Migration Playbook"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Strategy</label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Strategy</label>
+                <select className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none">
                   {Object.keys(strategyColors).map((strategy) => (
                     <option key={strategy} value={strategy} className="capitalize">
                       {strategy.charAt(0).toUpperCase() + strategy.slice(1)} - {strategyDescriptions[strategy]}
@@ -439,29 +439,29 @@ export function PlaybooksPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   rows={3}
                   placeholder="Describe the playbook and when it should be used"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Start From
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center gap-3 p-3 border border-surface-border rounded-lg cursor-pointer hover:bg-surface-overlay/50">
                     <input type="radio" name="startFrom" value="blank" className="text-primary-600" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Blank Playbook</p>
+                      <p className="text-sm font-medium text-white">Blank Playbook</p>
                       <p className="text-xs text-gray-500">Start from scratch</p>
                     </div>
                   </label>
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center gap-3 p-3 border border-surface-border rounded-lg cursor-pointer hover:bg-surface-overlay/50">
                     <input type="radio" name="startFrom" value="template" defaultChecked className="text-primary-600" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Copy from Template</p>
+                      <p className="text-sm font-medium text-white">Copy from Template</p>
                       <p className="text-xs text-gray-500">Use an existing playbook as a starting point</p>
                     </div>
                   </label>
@@ -470,7 +470,7 @@ export function PlaybooksPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

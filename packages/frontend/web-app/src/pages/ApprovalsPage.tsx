@@ -137,15 +137,15 @@ export function ApprovalsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-900/40 text-yellow-400';
       case 'approved':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-900/40 text-green-400';
       case 'rejected':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'expired':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-surface-overlay text-gray-300';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-surface-overlay text-gray-300';
     }
   };
 
@@ -183,24 +183,24 @@ export function ApprovalsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Approvals</h1>
+          <h1 className="text-2xl font-bold text-white">Approvals</h1>
           <p className="text-gray-500">Manage approval workflows and pending requests</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-surface-border">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('requests')}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'requests'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Approval Requests
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-900/40 text-yellow-400">
               {approvalRequests.filter((r) => r.status === 'pending').length}
             </span>
           </button>
@@ -209,11 +209,11 @@ export function ApprovalsPage() {
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'workflows'
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 hover:text-gray-200'
             }`}
           >
             Workflows
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-surface-overlay text-gray-300">
               {workflows.length}
             </span>
           </button>
@@ -229,14 +229,14 @@ export function ApprovalsPage() {
             placeholder="Search requests..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
         {activeTab === 'requests' && (
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 glass-input text-sm"
           >
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
@@ -255,17 +255,17 @@ export function ApprovalsPage() {
               <div
                 key={request.id}
                 onClick={() => setSelectedRequest(request)}
-                className={`bg-white rounded-xl p-5 shadow-sm border cursor-pointer transition-all ${
+                className={`glass-panel p-5 cursor-pointer transition-all ${
                   selectedRequest?.id === request.id
-                    ? 'border-primary-500 ring-2 ring-primary-100'
-                    : 'border-gray-100 hover:border-gray-200'
+                    ? 'border-primary-500 ring-2 ring-primary-500/20'
+                    : 'border-surface-border hover:border-surface-border'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-xs font-mono text-gray-500">{request.id}</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-900/40 text-blue-400 rounded">
                         {request.type}
                       </span>
                       <span
@@ -277,7 +277,7 @@ export function ApprovalsPage() {
                         {request.status}
                       </span>
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 mb-1">
+                    <h3 className="text-base font-semibold text-white mb-1">
                       {request.resourceName}
                     </h3>
                     <p className="text-sm text-gray-500">
@@ -288,7 +288,7 @@ export function ApprovalsPage() {
                 </div>
 
                 {/* Progress */}
-                <div className="mt-4 pt-3 border-t border-gray-100">
+                <div className="mt-4 pt-3 border-t border-surface-border">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-500">
                       Stage {request.currentStage + 1} of {request.totalStages}: {request.stageName}
@@ -306,7 +306,7 @@ export function ApprovalsPage() {
                             ? 'bg-yellow-500'
                             : i === request.currentStage && request.status === 'rejected'
                             ? 'bg-red-500'
-                            : 'bg-gray-200'
+                            : 'bg-gray-700'
                         }`}
                       />
                     ))}
@@ -317,10 +317,10 @@ export function ApprovalsPage() {
           </div>
 
           {/* Detail Panel */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit sticky top-6">
+          <div className="glass-panel h-fit sticky top-6">
             {selectedRequest ? (
               <div>
-                <div className="p-5 border-b border-gray-100">
+                <div className="p-5 border-b border-surface-border">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono text-gray-500">{selectedRequest.id}</span>
                     <span
@@ -332,34 +332,34 @@ export function ApprovalsPage() {
                       {selectedRequest.status}
                     </span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  <h3 className="text-lg font-semibold text-white mb-1">
                     {selectedRequest.resourceName}
                   </h3>
-                  <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                  <span className="text-xs px-1.5 py-0.5 bg-blue-900/40 text-blue-400 rounded">
                     {selectedRequest.type}
                   </span>
                 </div>
 
-                <div className="p-5 border-b border-gray-100">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Request Details</h4>
+                <div className="p-5 border-b border-surface-border">
+                  <h4 className="text-sm font-medium text-white mb-3">Request Details</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Requester</span>
-                      <span className="text-gray-900">{selectedRequest.requester.name}</span>
+                      <span className="text-white">{selectedRequest.requester.name}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Workflow</span>
-                      <span className="text-gray-900">{selectedRequest.workflow}</span>
+                      <span className="text-white">{selectedRequest.workflow}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Created</span>
-                      <span className="text-gray-900">{formatDate(selectedRequest.createdAt)}</span>
+                      <span className="text-white">{formatDate(selectedRequest.createdAt)}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-5 border-b border-gray-100">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Approval History</h4>
+                <div className="p-5 border-b border-surface-border">
+                  <h4 className="text-sm font-medium text-white mb-3">Approval History</h4>
                   <div className="space-y-3">
                     {selectedRequest.decisions.length === 0 ? (
                       <p className="text-sm text-gray-500">No decisions yet</p>
@@ -372,7 +372,7 @@ export function ApprovalsPage() {
                             <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                           )}
                           <div className="flex-1">
-                            <p className="text-sm text-gray-900">
+                            <p className="text-sm text-white">
                               <span className="font-medium">{decision.approver}</span>{' '}
                               <span className={decision.decision === 'approved' ? 'text-green-600' : 'text-red-600'}>
                                 {decision.decision}
@@ -426,18 +426,18 @@ export function ApprovalsPage() {
           {workflows.map((workflow) => (
             <div
               key={workflow.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              className="glass-panel p-6"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-primary-50 rounded-lg">
+                  <div className="p-2 bg-primary-900/30 rounded-lg">
                     <Settings className="w-5 h-5 text-primary-600" />
                   </div>
                   <div>
                     <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{workflow.name}</h3>
+                      <h3 className="text-lg font-semibold text-white">{workflow.name}</h3>
                       {!workflow.enabled && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-overlay text-gray-500">
                           Disabled
                         </span>
                       )}
@@ -448,7 +448,7 @@ export function ApprovalsPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       {workflow.stages.map((stage, i) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                          <span className="text-xs px-2 py-1 bg-surface-overlay text-gray-300 rounded">
                             {i + 1}. {stage.name}
                           </span>
                           {i < workflow.stages.length - 1 && (
@@ -464,7 +464,7 @@ export function ApprovalsPage() {
                       {workflow.triggers.map((trigger, i) => (
                         <span
                           key={i}
-                          className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded mr-1"
+                          className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded mr-1"
                         >
                           {trigger}
                         </span>
@@ -484,21 +484,21 @@ export function ApprovalsPage() {
       {/* Decision Modal */}
       {showDecisionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Make Decision</h2>
               <button
                 onClick={() => setShowDecisionModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Comment</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   rows={3}
                   placeholder="Add a comment for your decision"
                 />
@@ -519,7 +519,7 @@ export function ApprovalsPage() {
               </div>
               <button
                 onClick={() => setShowDecisionModal(false)}
-                className="w-full px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                className="w-full px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
               >
                 Cancel
               </button>

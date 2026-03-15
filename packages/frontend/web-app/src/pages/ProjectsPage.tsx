@@ -111,11 +111,11 @@ const projects = [
 ];
 
 const statusConfig: Record<string, { color: string; icon: typeof CheckCircle; label: string }> = {
-  planned: { color: 'bg-gray-100 text-gray-700', icon: Clock, label: 'Planned' },
-  in_progress: { color: 'bg-blue-100 text-blue-700', icon: Play, label: 'In Progress' },
-  on_hold: { color: 'bg-yellow-100 text-yellow-700', icon: Pause, label: 'On Hold' },
-  completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Completed' },
-  cancelled: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Cancelled' },
+  planned: { color: 'bg-gray-700/50 text-gray-300', icon: Clock, label: 'Planned' },
+  in_progress: { color: 'bg-blue-900/40 text-blue-400', icon: Play, label: 'In Progress' },
+  on_hold: { color: 'bg-yellow-900/40 text-yellow-400', icon: Pause, label: 'On Hold' },
+  completed: { color: 'bg-green-900/40 text-green-400', icon: CheckCircle, label: 'Completed' },
+  cancelled: { color: 'bg-red-900/40 text-red-400', icon: AlertCircle, label: 'Cancelled' },
 };
 
 export function ProjectsPage() {
@@ -133,10 +133,10 @@ export function ProjectsPage() {
   };
 
   const getProgressColor = (progress: number, status: string) => {
-    if (status === 'completed') return 'bg-green-500';
-    if (progress >= 75) return 'bg-green-500';
-    if (progress >= 50) return 'bg-blue-500';
-    if (progress >= 25) return 'bg-yellow-500';
+    if (status === 'completed') return 'bg-green-900/300';
+    if (progress >= 75) return 'bg-green-900/300';
+    if (progress >= 50) return 'bg-blue-900/300';
+    if (progress >= 25) return 'bg-yellow-900/300';
     return 'bg-gray-300';
   };
 
@@ -159,7 +159,7 @@ export function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Migration Projects</h1>
+          <h1 className="text-2xl font-bold text-white">Migration Projects</h1>
           <p className="text-gray-500">Track and manage active rationalization initiatives</p>
         </div>
         <button
@@ -183,7 +183,7 @@ export function ProjectsPage() {
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 statusFilter === status
                   ? config.color + ' border-current'
-                  : 'bg-white border-gray-100 hover:border-gray-200'
+                  : 'bg-surface-raised/80 border-surface-border hover:border-surface-border'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -205,10 +205,10 @@ export function ProjectsPage() {
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
-        <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <select className="px-3 py-2 glass-input text-sm">
           <option value="all">All Owners</option>
           <option value="john">John Doe</option>
           <option value="sarah">Sarah Williams</option>
@@ -225,16 +225,16 @@ export function ProjectsPage() {
               <div
                 key={project.id}
                 onClick={() => setSelectedProject(project)}
-                className={`bg-white rounded-xl p-5 shadow-sm border cursor-pointer transition-all ${
+                className={`glass-panel p-5 cursor-pointer transition-all ${
                   selectedProject?.id === project.id
                     ? 'border-primary-500 ring-2 ring-primary-100'
-                    : 'border-gray-100 hover:border-gray-200'
+                    : 'border-surface-border hover:border-surface-border'
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{project.name}</h3>
+                      <h3 className="font-semibold text-white">{project.name}</h3>
                       <span
                         className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${statusConfig[project.status].color}`}
                       >
@@ -253,7 +253,7 @@ export function ProjectsPage() {
                     <span>{project.currentPhase}</span>
                     <span>{project.progress}%</span>
                   </div>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-surface-overlay rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${getProgressColor(
                         project.progress,
@@ -284,36 +284,36 @@ export function ProjectsPage() {
         </div>
 
         {/* Detail Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="glass-panel h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {selectedProject ? (
             <div>
-              <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div className="p-6 border-b border-surface-border sticky top-0 bg-surface-raised/80 z-10">
                 <div className="flex items-center justify-between mb-3">
                   <span
                     className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${statusConfig[selectedProject.status].color}`}
                   >
                     {statusConfig[selectedProject.status].label}
                   </span>
-                  <button className="p-1 text-gray-400 hover:text-gray-600">
+                  <button className="p-1 text-gray-400 hover:text-gray-300">
                     <MoreHorizontal className="w-5 h-5" />
                   </button>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                <h2 className="text-xl font-semibold text-white mb-1">
                   {selectedProject.name}
                 </h2>
-                <p className="text-sm text-gray-600 mb-3">{selectedProject.description}</p>
+                <p className="text-sm text-gray-400 mb-3">{selectedProject.description}</p>
 
                 {/* Key Info */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="p-3 bg-surface-overlay/50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Application</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {selectedProject.application.name}
                     </p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="p-3 bg-surface-overlay/50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Playbook</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {selectedProject.playbook.name}
                     </p>
                   </div>
@@ -321,11 +321,11 @@ export function ProjectsPage() {
               </div>
 
               {/* Progress Overview */}
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Progress</h3>
+              <div className="p-6 border-b border-surface-border">
+                <h3 className="text-sm font-medium text-white mb-4">Progress</h3>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex-1">
-                    <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-full h-3 bg-surface-overlay rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${getProgressColor(
                           selectedProject.progress,
@@ -335,7 +335,7 @@ export function ProjectsPage() {
                       />
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{selectedProject.progress}%</span>
+                  <span className="text-lg font-bold text-white">{selectedProject.progress}%</span>
                 </div>
 
                 {/* Phase Progress */}
@@ -345,10 +345,10 @@ export function ProjectsPage() {
                       <div
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                           phase.status === 'completed'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-green-900/40 text-green-400'
                             : phase.status === 'in_progress'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-500'
+                            ? 'bg-blue-900/40 text-blue-400'
+                            : 'bg-surface-overlay text-gray-500'
                         }`}
                       >
                         {phase.status === 'completed' ? (
@@ -359,17 +359,17 @@ export function ProjectsPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-900">{phase.name}</span>
+                          <span className="text-sm text-white">{phase.name}</span>
                           <span className="text-xs text-gray-500">{phase.progress}%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                        <div className="w-full h-1.5 bg-surface-overlay rounded-full overflow-hidden mt-1">
                           <div
                             className={`h-full rounded-full ${
                               phase.status === 'completed'
-                                ? 'bg-green-500'
+                                ? 'bg-green-900/300'
                                 : phase.status === 'in_progress'
-                                ? 'bg-blue-500'
-                                : 'bg-gray-200'
+                                ? 'bg-blue-900/300'
+                                : 'bg-gray-700'
                             }`}
                             style={{ width: `${phase.progress}%` }}
                           />
@@ -381,19 +381,19 @@ export function ProjectsPage() {
               </div>
 
               {/* Timeline */}
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Timeline</h3>
+              <div className="p-6 border-b border-surface-border">
+                <h3 className="text-sm font-medium text-white mb-4">Timeline</h3>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1 p-3 bg-surface-overlay/50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Start Date</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {formatDate(selectedProject.startDate)}
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-300" />
-                  <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1 p-3 bg-surface-overlay/50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Target Date</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {formatDate(selectedProject.targetDate)}
                     </p>
                   </div>
@@ -401,20 +401,20 @@ export function ProjectsPage() {
               </div>
 
               {/* Team */}
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Team</h3>
+              <div className="p-6 border-b border-surface-border">
+                <h3 className="text-sm font-medium text-white mb-4">Team</h3>
                 <div className="flex items-center gap-2 flex-wrap">
                   {selectedProject.team.map((member, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-surface-overlay/50 rounded-full"
                     >
                       <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="text-xs font-medium text-primary-700">
                           {member.split(' ').map((n) => n[0]).join('')}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-700">{member}</span>
+                      <span className="text-sm text-gray-300">{member}</span>
                       {member === selectedProject.owner && (
                         <span className="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded">
                           Owner
@@ -426,15 +426,15 @@ export function ProjectsPage() {
               </div>
 
               {/* Recent Activity */}
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Recent Activity</h3>
+              <div className="p-6 border-b border-surface-border">
+                <h3 className="text-sm font-medium text-white mb-4">Recent Activity</h3>
                 {selectedProject.recentActivity.length > 0 ? (
                   <div className="space-y-3">
                     {selectedProject.recentActivity.map((activity) => (
                       <div key={activity.id} className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5" />
+                        <div className="w-2 h-2 rounded-full bg-primary-900/300 mt-1.5" />
                         <div>
-                          <p className="text-sm text-gray-900">{activity.action}</p>
+                          <p className="text-sm text-white">{activity.action}</p>
                           <p className="text-xs text-gray-500">
                             {activity.user} • {activity.time}
                           </p>
@@ -448,14 +448,14 @@ export function ProjectsPage() {
               </div>
 
               {/* Actions */}
-              <div className="p-6 sticky bottom-0 bg-white">
+              <div className="p-6 sticky bottom-0 bg-surface-raised/80">
                 <div className="flex gap-2">
                   {selectedProject.status === 'in_progress' && (
                     <>
                       <button className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
                         Update Progress
                       </button>
-                      <button className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      <button className="flex-1 px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-surface-overlay/50">
                         View Tasks
                       </button>
                     </>
@@ -467,7 +467,7 @@ export function ProjectsPage() {
                     </button>
                   )}
                   {selectedProject.status === 'completed' && (
-                    <button className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <button className="flex-1 px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-surface-overlay/50">
                       View Summary Report
                     </button>
                   )}
@@ -486,32 +486,32 @@ export function ProjectsPage() {
       {/* Create Project Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Migration Project</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Project Name
                 </label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="e.g., Analytics Platform Migration"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Application
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <select className="w-full px-3 py-2 glass-input text-sm">
                   <option value="">Select an application</option>
                   <option value="1">Core ERP System</option>
                   <option value="2">Analytics Platform</option>
@@ -519,10 +519,10 @@ export function ProjectsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Playbook
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <select className="w-full px-3 py-2 glass-input text-sm">
                   <option value="">Select a playbook</option>
                   <option value="1">Cloud Rehosting Playbook</option>
                   <option value="2">Application Retirement Playbook</option>
@@ -531,30 +531,30 @@ export function ProjectsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Start Date
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 glass-input text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Target Date
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 glass-input text-sm"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Description
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   rows={3}
                   placeholder="Describe the project goals and scope"
                 />
@@ -562,7 +562,7 @@ export function ProjectsPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

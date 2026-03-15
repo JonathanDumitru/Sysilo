@@ -20,10 +20,10 @@ import {
 import type { TriggerType } from '@/services/playbooks';
 
 const triggerTypeLabels: Record<TriggerType, { label: string; icon: React.ElementType; color: string }> = {
-  manual: { label: 'Manual', icon: Play, color: 'text-gray-600 bg-gray-100' },
-  scheduled: { label: 'Scheduled', icon: Clock, color: 'text-blue-600 bg-blue-100' },
-  event: { label: 'Event', icon: Zap, color: 'text-amber-600 bg-amber-100' },
-  webhook: { label: 'Webhook', icon: Webhook, color: 'text-purple-600 bg-purple-100' },
+  manual: { label: 'Manual', icon: Play, color: 'text-gray-400 bg-gray-700/50' },
+  scheduled: { label: 'Scheduled', icon: Clock, color: 'text-blue-400 bg-blue-900/40' },
+  event: { label: 'Event', icon: Zap, color: 'text-amber-400 bg-amber-900/40' },
+  webhook: { label: 'Webhook', icon: Webhook, color: 'text-purple-400 bg-purple-900/40' },
 };
 
 export function AutomationPlaybooksListPage() {
@@ -56,7 +56,7 @@ export function AutomationPlaybooksListPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertCircle className="w-12 h-12 text-red-500" />
-        <p className="text-gray-600">Failed to load playbooks</p>
+        <p className="text-gray-400">Failed to load playbooks</p>
       </div>
     );
   }
@@ -68,7 +68,7 @@ export function AutomationPlaybooksListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Automation Playbooks</h1>
+          <h1 className="text-2xl font-semibold text-white">Automation Playbooks</h1>
           <p className="mt-1 text-sm text-gray-500">
             Create and manage automated operational workflows
           </p>
@@ -84,24 +84,24 @@ export function AutomationPlaybooksListPage() {
 
       {/* Playbooks List */}
       {playbooks.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg border border-surface-border p-12 text-center">
           <Workflow className="w-12 h-12 mx-auto text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No playbooks yet</h3>
+          <h3 className="mt-4 text-lg font-medium text-white">No playbooks yet</h3>
           <p className="mt-2 text-sm text-gray-500">
             Create your first automation playbook to streamline operational workflows.
           </p>
           <button
             onClick={() => navigate('/operations/playbooks/new')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-900/30 rounded-lg hover:bg-primary-900/50"
           >
             <Plus className="w-4 h-4" />
             Create your first playbook
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg border border-surface-border overflow-hidden">
+          <table className="min-w-full divide-y divide-surface-border">
+            <thead className="bg-surface-overlay/50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
@@ -120,7 +120,7 @@ export function AutomationPlaybooksListPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-surface-border">
               {playbooks.map((playbook) => {
                 const triggerInfo = triggerTypeLabels[playbook.trigger_type];
                 const TriggerIcon = triggerInfo.icon;
@@ -128,16 +128,16 @@ export function AutomationPlaybooksListPage() {
                 return (
                   <tr
                     key={playbook.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-white/5 cursor-pointer"
                     onClick={() => navigate(`/operations/playbooks/${playbook.id}/edit`)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                        <div className="flex-shrink-0 w-10 h-10 bg-primary-900/40 rounded-lg flex items-center justify-center">
                           <Workflow className="w-5 h-5 text-primary-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{playbook.name}</div>
+                          <div className="text-sm font-medium text-white">{playbook.name}</div>
                           {playbook.description && (
                             <div className="text-sm text-gray-500 truncate max-w-xs">
                               {playbook.description}
@@ -166,21 +166,21 @@ export function AutomationPlaybooksListPage() {
                         <button
                           onClick={() => handleRun(playbook.id)}
                           disabled={runMutation.isPending}
-                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-900/30 rounded-lg"
                           title="Run playbook"
                         >
                           <Play className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => navigate(`/operations/playbooks/${playbook.id}/edit`)}
-                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-900/30 rounded-lg"
                           title="Edit playbook"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeleteId(playbook.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-900/30 rounded-lg"
                           title="Delete playbook"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -198,15 +198,15 @@ export function AutomationPlaybooksListPage() {
       {/* Delete Confirmation Modal */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900">Delete Playbook</h3>
+          <div className="bg-surface-raised border border-surface-border rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-white">Delete Playbook</h3>
             <p className="mt-2 text-sm text-gray-500">
               Are you sure you want to delete this playbook? This action cannot be undone.
             </p>
             <div className="mt-4 flex justify-end gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 text-sm font-medium text-gray-300 bg-surface-overlay rounded-lg hover:bg-gray-700"
               >
                 Cancel
               </button>

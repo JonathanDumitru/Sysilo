@@ -105,30 +105,30 @@ export function RationalizationDashboardPage() {
   const getQuadrantColor = (quadrant: string) => {
     switch (quadrant) {
       case 'tolerate':
-        return 'bg-amber-100 border-amber-300 text-amber-800';
+        return 'bg-amber-900/40 border-amber-700/50 text-amber-400';
       case 'invest':
-        return 'bg-green-100 border-green-300 text-green-800';
+        return 'bg-green-900/40 border-green-700/50 text-green-400';
       case 'migrate':
-        return 'bg-blue-100 border-blue-300 text-blue-800';
+        return 'bg-blue-900/40 border-blue-700/50 text-blue-400';
       case 'eliminate':
-        return 'bg-red-100 border-red-300 text-red-800';
+        return 'bg-red-900/40 border-red-700/50 text-red-400';
       default:
-        return 'bg-gray-100 border-gray-300 text-gray-800';
+        return 'bg-gray-700/50 border-surface-border text-gray-300';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'retirement':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'migration':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/40 text-blue-400';
       case 'consolidation':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-900/40 text-purple-400';
       case 'optimization':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-900/40 text-green-400';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300';
     }
   };
 
@@ -146,7 +146,7 @@ export function RationalizationDashboardPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-          <p className="text-gray-900 font-medium">Failed to load dashboard data</p>
+          <p className="text-white font-medium">Failed to load dashboard data</p>
           <p className="text-sm text-gray-500 mt-1">
             {hasError instanceof Error ? hasError.message : 'An unexpected error occurred'}
           </p>
@@ -160,11 +160,11 @@ export function RationalizationDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rationalization Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">Rationalization Dashboard</h1>
           <p className="text-gray-500">Application portfolio analysis and optimization</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button className="px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5">
             Export Report
           </button>
           <button
@@ -181,10 +181,10 @@ export function RationalizationDashboardPage() {
         {portfolioMetrics.map((metric) => (
           <div
             key={metric.name}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+            className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-primary-50 rounded-lg">
+              <div className="p-2 bg-primary-900/30 rounded-lg">
                 <metric.icon className="w-5 h-5 text-primary-600" />
               </div>
             </div>
@@ -192,7 +192,7 @@ export function RationalizationDashboardPage() {
               {analyticsLoading ? (
                 <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
               ) : (
-                <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
+                <p className="text-3xl font-bold text-white">{metric.value}</p>
               )}
               <p className="text-sm font-medium text-gray-500">{metric.name}</p>
             </div>
@@ -203,10 +203,10 @@ export function RationalizationDashboardPage() {
       {/* TIME Quadrant & Recommendations */}
       <div className="grid grid-cols-3 gap-6">
         {/* TIME Quadrant Visualization */}
-        <div className="col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="col-span-2 bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">TIME Quadrant Analysis</h2>
+              <h2 className="text-lg font-semibold text-white">TIME Quadrant Analysis</h2>
               <p className="text-sm text-gray-500">Portfolio distribution by business value and technical health</p>
             </div>
             <a href="/rationalization/applications" className="text-sm text-primary-600 hover:text-primary-700">
@@ -230,17 +230,17 @@ export function RationalizationDashboardPage() {
                 onClick={() => setSelectedQuadrant(selectedQuadrant === 'tolerate' ? null : 'tolerate')}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedQuadrant === 'tolerate'
-                    ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200'
-                    : 'bg-amber-50/50 border-amber-200 hover:border-amber-300'
+                    ? 'bg-amber-900/30 border-amber-500 ring-2 ring-amber-700/50'
+                    : 'bg-amber-900/20 border-amber-700/50 hover:border-amber-600/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-amber-800">TOLERATE</span>
-                  <span className="text-2xl font-bold text-amber-700">
+                  <span className="text-sm font-semibold text-amber-400">TOLERATE</span>
+                  <span className="text-2xl font-bold text-amber-400">
                     {timeSummary?.tolerate ?? 0}
                   </span>
                 </div>
-                <p className="text-xs text-amber-600">Low Value • Good Health</p>
+                <p className="text-xs text-amber-500">Low Value • Good Health</p>
                 <p className="text-xs text-gray-500 mt-1">Maintain with minimal investment</p>
               </div>
 
@@ -249,17 +249,17 @@ export function RationalizationDashboardPage() {
                 onClick={() => setSelectedQuadrant(selectedQuadrant === 'invest' ? null : 'invest')}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedQuadrant === 'invest'
-                    ? 'bg-green-50 border-green-400 ring-2 ring-green-200'
-                    : 'bg-green-50/50 border-green-200 hover:border-green-300'
+                    ? 'bg-green-900/30 border-green-500 ring-2 ring-green-700/50'
+                    : 'bg-green-900/20 border-green-700/50 hover:border-green-600/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-green-800">INVEST</span>
-                  <span className="text-2xl font-bold text-green-700">
+                  <span className="text-sm font-semibold text-green-400">INVEST</span>
+                  <span className="text-2xl font-bold text-green-400">
                     {timeSummary?.invest ?? 0}
                   </span>
                 </div>
-                <p className="text-xs text-green-600">High Value • Good Health</p>
+                <p className="text-xs text-green-500">High Value • Good Health</p>
                 <p className="text-xs text-gray-500 mt-1">Strategic assets to grow</p>
               </div>
 
@@ -268,17 +268,17 @@ export function RationalizationDashboardPage() {
                 onClick={() => setSelectedQuadrant(selectedQuadrant === 'eliminate' ? null : 'eliminate')}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedQuadrant === 'eliminate'
-                    ? 'bg-red-50 border-red-400 ring-2 ring-red-200'
-                    : 'bg-red-50/50 border-red-200 hover:border-red-300'
+                    ? 'bg-red-900/30 border-red-500 ring-2 ring-red-700/50'
+                    : 'bg-red-900/20 border-red-700/50 hover:border-red-600/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-red-800">ELIMINATE</span>
-                  <span className="text-2xl font-bold text-red-700">
+                  <span className="text-sm font-semibold text-red-400">ELIMINATE</span>
+                  <span className="text-2xl font-bold text-red-400">
                     {timeSummary?.eliminate ?? 0}
                   </span>
                 </div>
-                <p className="text-xs text-red-600">Low Value • Poor Health</p>
+                <p className="text-xs text-red-500">Low Value • Poor Health</p>
                 <p className="text-xs text-gray-500 mt-1">Candidates for retirement</p>
               </div>
 
@@ -287,17 +287,17 @@ export function RationalizationDashboardPage() {
                 onClick={() => setSelectedQuadrant(selectedQuadrant === 'migrate' ? null : 'migrate')}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedQuadrant === 'migrate'
-                    ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200'
-                    : 'bg-blue-50/50 border-blue-200 hover:border-blue-300'
+                    ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-700/50'
+                    : 'bg-blue-900/20 border-blue-700/50 hover:border-blue-600/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-blue-800">MIGRATE</span>
-                  <span className="text-2xl font-bold text-blue-700">
+                  <span className="text-sm font-semibold text-blue-400">MIGRATE</span>
+                  <span className="text-2xl font-bold text-blue-400">
                     {timeSummary?.migrate ?? 0}
                   </span>
                 </div>
-                <p className="text-xs text-blue-600">High Value • Poor Health</p>
+                <p className="text-xs text-blue-500">High Value • Poor Health</p>
                 <p className="text-xs text-gray-500 mt-1">Modernize or replace</p>
               </div>
             </div>
@@ -305,8 +305,8 @@ export function RationalizationDashboardPage() {
 
           {/* Selected Quadrant Details */}
           {selectedQuadrant && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 mb-2 capitalize">
+            <div className="mt-4 p-4 bg-surface-overlay/50 rounded-lg">
+              <h4 className="text-sm font-medium text-white mb-2 capitalize">
                 {selectedQuadrant} Applications
               </h4>
               {assessmentsLoading ? (
@@ -333,9 +333,9 @@ export function RationalizationDashboardPage() {
         </div>
 
         {/* AI Recommendations */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">AI Recommendations</h2>
+            <h2 className="text-lg font-semibold text-white">AI Recommendations</h2>
             {recommendations && recommendations.length > 0 && (
               <span className="flex items-center gap-1 text-xs text-primary-600">
                 <TrendingUp className="w-3 h-3" />
@@ -354,7 +354,7 @@ export function RationalizationDashboardPage() {
               {topRecommendations.map((rec) => (
                 <div
                   key={rec.id}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 cursor-pointer transition-colors"
+                  className="p-3 bg-surface-overlay/50 rounded-lg border border-surface-border hover:border-gray-600 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <span
@@ -368,10 +368,10 @@ export function RationalizationDashboardPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-900 mb-2">{rec.title}</p>
+                  <p className="text-sm font-medium text-white mb-2">{rec.title}</p>
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     {rec.estimated_savings != null && (
-                      <span className="text-green-600 font-medium">
+                      <span className="text-green-400 font-medium">
                         {formatCurrency(rec.estimated_savings)}/yr savings
                       </span>
                     )}
@@ -390,9 +390,9 @@ export function RationalizationDashboardPage() {
       </div>
 
       {/* Active Scenarios */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Active Scenarios</h2>
+          <h2 className="text-lg font-semibold text-white">Active Scenarios</h2>
           <a href="/rationalization/scenarios" className="text-sm text-primary-600 hover:text-primary-700">
             View all scenarios
           </a>
@@ -415,15 +415,15 @@ export function RationalizationDashboardPage() {
                   <th className="pb-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-surface-border">
                 {scenarios.map((scenario) => (
                   <tr key={scenario.id} className="text-sm">
-                    <td className="py-3 font-medium text-gray-900">{scenario.name}</td>
-                    <td className="py-3 text-gray-600">
+                    <td className="py-3 font-medium text-white">{scenario.name}</td>
+                    <td className="py-3 text-gray-400">
                       {scenario.affected_applications?.length ?? 0} apps
                     </td>
                     <td className="py-3">
-                      <span className="text-green-600 font-medium">
+                      <span className="text-green-400 font-medium">
                         {scenario.roi_percent != null ? `+${scenario.roi_percent.toFixed(0)}%` : '--'}
                       </span>
                     </td>
@@ -431,10 +431,10 @@ export function RationalizationDashboardPage() {
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${
                           scenario.status === 'complete' || scenario.status === 'completed'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-green-900/40 text-green-400'
                             : scenario.status === 'analyzing'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-700'
+                            ? 'bg-blue-900/40 text-blue-400'
+                            : 'bg-gray-700/50 text-gray-300'
                         }`}
                       >
                         {scenario.status ?? 'draft'}

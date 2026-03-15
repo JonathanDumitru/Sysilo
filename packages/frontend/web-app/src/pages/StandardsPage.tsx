@@ -80,13 +80,13 @@ const standards = [
 ];
 
 const categories = [
-  { value: 'naming', label: 'Naming', color: 'bg-blue-100 text-blue-700' },
-  { value: 'security', label: 'Security', color: 'bg-red-100 text-red-700' },
-  { value: 'architecture', label: 'Architecture', color: 'bg-purple-100 text-purple-700' },
-  { value: 'data_management', label: 'Data Management', color: 'bg-green-100 text-green-700' },
-  { value: 'integration', label: 'Integration', color: 'bg-orange-100 text-orange-700' },
-  { value: 'operations', label: 'Operations', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'documentation', label: 'Documentation', color: 'bg-gray-100 text-gray-700' },
+  { value: 'naming', label: 'Naming', color: 'bg-blue-900/40 text-blue-400' },
+  { value: 'security', label: 'Security', color: 'bg-red-900/40 text-red-400' },
+  { value: 'architecture', label: 'Architecture', color: 'bg-purple-900/40 text-purple-400' },
+  { value: 'data_management', label: 'Data Management', color: 'bg-green-900/40 text-green-400' },
+  { value: 'integration', label: 'Integration', color: 'bg-orange-900/40 text-orange-400' },
+  { value: 'operations', label: 'Operations', color: 'bg-yellow-900/40 text-yellow-400' },
+  { value: 'documentation', label: 'Documentation', color: 'bg-surface-overlay text-gray-300' },
 ];
 
 export function StandardsPage() {
@@ -97,7 +97,7 @@ export function StandardsPage() {
 
   const getCategoryColor = (category: string) => {
     const cat = categories.find((c) => c.value === category);
-    return cat?.color || 'bg-gray-100 text-gray-700';
+    return cat?.color || 'bg-surface-overlay text-gray-300';
   };
 
   const getCategoryLabel = (category: string) => {
@@ -115,7 +115,7 @@ export function StandardsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Standards Library</h1>
+          <h1 className="text-2xl font-bold text-white">Standards Library</h1>
           <p className="text-gray-500">Organization-wide standards and best practices</p>
         </div>
         <button
@@ -136,13 +136,13 @@ export function StandardsPage() {
             placeholder="Search standards..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 glass-input text-sm"
         >
           <option value="all">All Categories</option>
           {categories.map((cat) => (
@@ -161,17 +161,17 @@ export function StandardsPage() {
             <div
               key={standard.id}
               onClick={() => setSelectedStandard(standard)}
-              className={`bg-white rounded-xl p-5 shadow-sm border cursor-pointer transition-all ${
+              className={`glass-panel p-5 cursor-pointer transition-all ${
                 selectedStandard?.id === standard.id
-                  ? 'border-primary-500 ring-2 ring-primary-100'
-                  : 'border-gray-100 hover:border-gray-200'
+                  ? 'border-primary-500 ring-2 ring-primary-500/20'
+                  : 'border-surface-border hover:border-surface-border'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <div
                     className={`p-2 rounded-lg ${
-                      standard.isActive ? 'bg-primary-50' : 'bg-gray-100'
+                      standard.isActive ? 'bg-primary-900/30' : 'bg-surface-overlay'
                     }`}
                   >
                     <BookOpen
@@ -182,9 +182,9 @@ export function StandardsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{standard.name}</h3>
+                      <h3 className="font-semibold text-white">{standard.name}</h3>
                       {!standard.isActive && (
-                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                        <span className="text-xs px-1.5 py-0.5 bg-surface-overlay text-gray-500 rounded">
                           Inactive
                         </span>
                       )}
@@ -194,7 +194,7 @@ export function StandardsPage() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
               </div>
-              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-surface-border">
                 <span
                   className={`text-xs font-medium px-2 py-0.5 rounded-full ${getCategoryColor(
                     standard.category
@@ -213,10 +213,10 @@ export function StandardsPage() {
         </div>
 
         {/* Detail Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit sticky top-6">
+        <div className="glass-panel h-fit sticky top-6">
           {selectedStandard ? (
             <div>
-              <div className="p-6 border-b border-gray-100">
+              <div className="p-6 border-b border-surface-border">
                 <div className="flex items-center justify-between mb-3">
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${getCategoryColor(
@@ -228,33 +228,33 @@ export function StandardsPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">Version {selectedStandard.version}</span>
                     {!selectedStandard.isActive && (
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                      <span className="text-xs px-1.5 py-0.5 bg-surface-overlay text-gray-500 rounded">
                         Inactive
                       </span>
                     )}
                   </div>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                <h2 className="text-xl font-semibold text-white mb-2">
                   {selectedStandard.name}
                 </h2>
-                <p className="text-sm text-gray-600">{selectedStandard.description}</p>
+                <p className="text-sm text-gray-400">{selectedStandard.description}</p>
               </div>
 
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">
+              <div className="p-6 border-b border-surface-border">
+                <h3 className="text-sm font-medium text-white mb-4">
                   Rules ({selectedStandard.rules.length})
                 </h3>
                 <div className="space-y-3">
                   {selectedStandard.rules.map((rule, index) => (
                     <div
                       key={rule.id}
-                      className="flex gap-3 p-3 bg-gray-50 rounded-lg"
+                      className="flex gap-3 p-3 bg-surface-overlay/50 rounded-lg"
                     >
-                      <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 text-xs font-medium rounded-full flex-shrink-0">
+                      <span className="flex items-center justify-center w-6 h-6 bg-primary-900/40 text-primary-400 text-xs font-medium rounded-full flex-shrink-0">
                         {index + 1}
                       </span>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{rule.title}</p>
+                        <p className="text-sm font-medium text-white">{rule.title}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{rule.description}</p>
                       </div>
                     </div>
@@ -263,22 +263,22 @@ export function StandardsPage() {
               </div>
 
               {selectedStandard.examples.length > 0 && (
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-900 mb-4">Examples</h3>
+                <div className="p-6 border-b border-surface-border">
+                  <h3 className="text-sm font-medium text-white mb-4">Examples</h3>
                   <div className="space-y-2">
                     {selectedStandard.examples.map((example, index) => (
                       <div
                         key={index}
                         className={`p-3 rounded-lg border ${
                           example.valid
-                            ? 'bg-green-50 border-green-200'
-                            : 'bg-red-50 border-red-200'
+                            ? 'bg-green-900/30 border-green-800'
+                            : 'bg-red-900/30 border-red-800'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <code
                             className={`text-sm font-mono ${
-                              example.valid ? 'text-green-700' : 'text-red-700'
+                              example.valid ? 'text-green-400' : 'text-red-400'
                             }`}
                           >
                             {example.value}
@@ -291,7 +291,7 @@ export function StandardsPage() {
                             {example.valid ? '✓ Valid' : '✗ Invalid'}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">{example.note}</p>
+                        <p className="text-xs text-gray-400">{example.note}</p>
                       </div>
                     ))}
                   </div>
@@ -304,11 +304,11 @@ export function StandardsPage() {
                   <span>Updated {formatDate(selectedStandard.updatedAt)}</span>
                 </div>
                 <div className="flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-surface-overlay/50">
                     <Edit className="w-4 h-4" />
                     Edit
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-surface-border rounded-lg text-sm font-medium text-gray-300 hover:bg-surface-overlay/50">
                     <Copy className="w-4 h-4" />
                     Duplicate
                   </button>
@@ -327,28 +327,28 @@ export function StandardsPage() {
       {/* Create Standard Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Standard</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="Enter standard name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                <select className="w-full px-3 py-2 glass-input text-sm">
                   {categories.map((cat) => (
                     <option key={cat.value} value={cat.value}>
                       {cat.label}
@@ -357,9 +357,9 @@ export function StandardsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   rows={3}
                   placeholder="Describe the standard and its purpose"
                 />
@@ -367,7 +367,7 @@ export function StandardsPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

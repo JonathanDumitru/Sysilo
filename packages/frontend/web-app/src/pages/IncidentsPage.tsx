@@ -74,32 +74,32 @@ export function IncidentsPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-red-900/40 text-red-400 border-red-800';
       case 'high':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
+        return 'bg-orange-900/40 text-orange-400 border-orange-800';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+        return 'bg-yellow-900/40 text-yellow-400 border-yellow-800';
       case 'low':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-blue-900/40 text-blue-400 border-blue-800';
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'bg-gray-700/50 text-gray-300 border-surface-border';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'acknowledged':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-900/40 text-yellow-400';
       case 'investigating':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/40 text-blue-400';
       case 'resolved':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-900/40 text-green-400';
       case 'closed':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300';
     }
   };
 
@@ -141,7 +141,7 @@ export function IncidentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Incidents</h1>
+          <h1 className="text-2xl font-bold text-white">Incidents</h1>
           <p className="text-gray-500">Track and manage operational incidents</p>
         </div>
         <button
@@ -155,27 +155,27 @@ export function IncidentsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg p-4 border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg p-4 border border-surface-border">
           <p className="text-sm text-gray-500">Open</p>
           <p className="text-2xl font-bold text-red-600">
             {incidents.filter((i) => i.status === 'open' || i.status === 'acknowledged').length}
           </p>
         </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg p-4 border border-surface-border">
           <p className="text-sm text-gray-500">Investigating</p>
           <p className="text-2xl font-bold text-blue-600">
             {incidents.filter((i) => i.status === 'investigating').length}
           </p>
         </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg p-4 border border-surface-border">
           <p className="text-sm text-gray-500">Resolved Today</p>
           <p className="text-2xl font-bold text-green-600">
             {incidents.filter((i) => i.status === 'resolved').length}
           </p>
         </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-lg p-4 border border-surface-border">
           <p className="text-sm text-gray-500">Avg Resolution Time</p>
-          <p className="text-2xl font-bold text-gray-900">2.5h</p>
+          <p className="text-2xl font-bold text-white">2.5h</p>
         </div>
       </div>
 
@@ -188,13 +188,13 @@ export function IncidentsPage() {
             placeholder="Search incidents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="px-3 py-2 glass-input text-sm"
         >
           <option value="all">All Statuses</option>
           <option value="open">Open</option>
@@ -213,10 +213,10 @@ export function IncidentsPage() {
             <div
               key={incident.id}
               onClick={() => setSelectedIncident(incident)}
-              className={`bg-white rounded-xl p-5 shadow-sm border cursor-pointer transition-all ${
+              className={`bg-surface-raised/80 backdrop-blur-glass rounded-xl p-5 shadow-glass border cursor-pointer transition-all ${
                 selectedIncident?.id === incident.id
                   ? 'border-primary-500 ring-2 ring-primary-100'
-                  : 'border-gray-100 hover:border-gray-200'
+                  : 'border-surface-border hover:border-surface-border'
               }`}
             >
               <div className="flex items-start justify-between">
@@ -239,12 +239,12 @@ export function IncidentsPage() {
                       {incident.status}
                     </span>
                   </div>
-                  <h3 className="text-base font-semibold text-gray-900 mb-1">{incident.title}</h3>
+                  <h3 className="text-base font-semibold text-white mb-1">{incident.title}</h3>
                   <p className="text-sm text-gray-500 line-clamp-2">{incident.description}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between mt-4 pt-3 border-t border-surface-border">
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <User className="w-3 h-3" />
@@ -264,10 +264,10 @@ export function IncidentsPage() {
         </div>
 
         {/* Detail Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit sticky top-6">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border border-surface-border h-fit sticky top-6">
           {selectedIncident ? (
             <div>
-              <div className="p-5 border-b border-gray-100">
+              <div className="p-5 border-b border-surface-border">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-mono text-gray-500">{selectedIncident.id}</span>
                   <div className="flex items-center gap-2">
@@ -287,22 +287,22 @@ export function IncidentsPage() {
                     </span>
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-white mb-2">
                   {selectedIncident.title}
                 </h3>
-                <p className="text-sm text-gray-600">{selectedIncident.description}</p>
+                <p className="text-sm text-gray-400">{selectedIncident.description}</p>
               </div>
 
-              <div className="p-5 border-b border-gray-100">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Details</h4>
+              <div className="p-5 border-b border-surface-border">
+                <h4 className="text-sm font-medium text-white mb-3">Details</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Assignee</span>
-                    <span className="text-gray-900">{selectedIncident.assignee.name}</span>
+                    <span className="text-white">{selectedIncident.assignee.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Created</span>
-                    <span className="text-gray-900">{formatDate(selectedIncident.created)}</span>
+                    <span className="text-white">{formatDate(selectedIncident.created)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Related Alerts</span>
@@ -313,14 +313,14 @@ export function IncidentsPage() {
                 </div>
               </div>
 
-              <div className="p-5 border-b border-gray-100">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Timeline</h4>
+              <div className="p-5 border-b border-surface-border">
+                <h4 className="text-sm font-medium text-white mb-3">Timeline</h4>
                 <div className="space-y-4">
                   {selectedIncident.timeline.map((event, i) => (
                     <div key={i} className="flex gap-3">
                       <div className="mt-0.5">{getTimelineIcon(event.type)}</div>
                       <div className="flex-1">
-                        <p className="text-sm text-gray-900">{event.content}</p>
+                        <p className="text-sm text-white">{event.content}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {event.user} · {event.time}
                         </p>
@@ -335,7 +335,7 @@ export function IncidentsPage() {
                   <input
                     type="text"
                     placeholder="Add a comment..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 px-3 py-2 glass-input text-sm"
                   />
                   <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
                     Send
@@ -343,11 +343,11 @@ export function IncidentsPage() {
                 </div>
                 <div className="flex gap-2 mt-3">
                   {selectedIncident.status !== 'resolved' && (
-                    <button className="flex-1 px-3 py-2 border border-green-200 text-green-700 rounded-lg text-sm font-medium hover:bg-green-50">
+                    <button className="flex-1 px-3 py-2 border border-green-800 text-green-400 rounded-lg text-sm font-medium hover:bg-white/5">
                       Resolve
                     </button>
                   )}
-                  <button className="flex-1 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+                  <button className="flex-1 px-3 py-2 border border-surface-border text-gray-300 rounded-lg text-sm font-medium hover:bg-white/5">
                     Change Status
                   </button>
                 </div>
@@ -365,37 +365,37 @@ export function IncidentsPage() {
       {/* Create Incident Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+          <div className="bg-surface-raised border border-surface-border rounded-xl p-6 w-full max-w-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Create Incident</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-gray-400 hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Title</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   placeholder="Brief description of the incident"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 glass-input text-sm"
                   rows={3}
                   placeholder="Detailed description of the incident"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Severity</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option value="critical">Critical</option>
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
@@ -403,8 +403,8 @@ export function IncidentsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-                  <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Assignee</label>
+                  <select className="w-full px-3 py-2 glass-input text-sm">
                     <option>John Doe</option>
                     <option>Jane Smith</option>
                     <option>Bob Wilson</option>
@@ -414,7 +414,7 @@ export function IncidentsPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
                 >
                   Cancel
                 </button>

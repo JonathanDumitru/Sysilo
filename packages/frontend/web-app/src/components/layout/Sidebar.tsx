@@ -29,6 +29,7 @@ import {
   Package,
   ShieldCheck,
   HeartPulse,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { usePlan } from '../../hooks/usePlan';
@@ -84,9 +85,10 @@ interface NavItemProps {
   item: { name: string; href: string; icon: React.ComponentType<{ className?: string }> };
   locked?: boolean;
   onLockedClick?: () => void;
+  onNavigate?: () => void;
 }
 
-function NavItem({ item, locked, onLockedClick }: NavItemProps) {
+function NavItem({ item, locked, onLockedClick, onNavigate }: NavItemProps) {
   if (locked) {
     return (
       <li>
@@ -107,6 +109,7 @@ function NavItem({ item, locked, onLockedClick }: NavItemProps) {
       <NavLink
         to={item.href}
         end={item.href === '/operations' || item.href === '/governance'}
+        onClick={onNavigate}
         className={({ isActive }) =>
           clsx(
             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -128,9 +131,10 @@ interface NavSectionProps {
   items: typeof mainNavigation;
   lockedItems?: Set<string>;
   onLockedClick?: (href: string) => void;
+  onNavigate?: () => void;
 }
 
-function NavSection({ title, items, lockedItems, onLockedClick }: NavSectionProps) {
+function NavSection({ title, items, lockedItems, onLockedClick, onNavigate }: NavSectionProps) {
   return (
     <div className="mb-4">
       <h3 className="px-3 mb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -143,6 +147,7 @@ function NavSection({ title, items, lockedItems, onLockedClick }: NavSectionProp
             item={item}
             locked={lockedItems?.has(item.href)}
             onLockedClick={() => onLockedClick?.(item.href)}
+            onNavigate={onNavigate}
           />
         ))}
       </ul>
@@ -164,7 +169,11 @@ const routePlanMap: Record<string, string> = {
   '/ai': 'business',
 };
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const { hasFeature } = usePlan();
   const [upgradeModal, setUpgradeModal] = useState<{ feature: string; plan: string } | null>(null);
 
@@ -190,27 +199,37 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-60 bg-surface-raised/95 backdrop-blur-glass border-r border-surface-border text-white flex flex-col">
+    <aside className="w-64 lg:w-60 h-full bg-surface-raised/95 backdrop-blur-glass border-r border-surface-border text-white flex flex-col">
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-surface-border">
+      <div className="h-14 md:h-16 flex items-center justify-between px-4 md:px-6 border-b border-surface-border">
         <span className="text-xl font-bold text-primary-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.3)]">Sysilo</span>
-        <PlanBadge />
+        <div className="flex items-center gap-2">
+          <PlanBadge />
+          {/* Mobile close button */}
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-200 lg:hidden"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
-        <NavSection title="Core" items={mainNavigation} />
-        <NavSection title="Operations" items={operationsNavigation} />
-        <NavSection title="Governance" items={governanceNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
-        <NavSection title="Rationalization" items={rationalizationNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
-        <NavSection title="Platform" items={platformNavigation} />
-        <NavSection title="AI" items={aiNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
+        <NavSection title="Core" items={mainNavigation} onNavigate={onClose} />
+        <NavSection title="Operations" items={operationsNavigation} onNavigate={onClose} />
+        <NavSection title="Governance" items={governanceNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} onNavigate={onClose} />
+        <NavSection title="Rationalization" items={rationalizationNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} onNavigate={onClose} />
+        <NavSection title="Platform" items={platformNavigation} onNavigate={onClose} />
+        <NavSection title="AI" items={aiNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} onNavigate={onClose} />
       </nav>
 
       {/* Settings */}
       <div className="p-3 border-t border-surface-border">
         <NavLink
           to="/settings"
+          onClick={onClose}
           className={({ isActive }) =>
             clsx(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',

@@ -48,11 +48,11 @@ export function AgentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agents</h1>
-          <p className="text-gray-500">Manage your on-premise and cloud agents</p>
+          <h1 className="text-2xl font-bold text-white">Agents</h1>
+          <p className="text-gray-400">Manage your on-premise and cloud agents</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <button className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:bg-white/10 rounded-lg transition-colors">
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
@@ -64,10 +64,10 @@ export function AgentsPage() {
       </div>
 
       {/* Agent list */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border border-surface-border">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-surface-border">
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-4">
                 Agent
               </th>
@@ -88,21 +88,21 @@ export function AgentsPage() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-surface-border">
             {agents.map((agent) => (
-              <tr key={agent.id} className="hover:bg-gray-50">
+              <tr key={agent.id} className="hover:bg-white/5">
                 <td className="px-6 py-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{agent.name}</p>
-                    <p className="text-xs text-gray-500">{agent.location}</p>
+                    <p className="text-sm font-medium text-white">{agent.name}</p>
+                    <p className="text-xs text-gray-400">{agent.location}</p>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <span
                     className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
                       agent.status === 'connected'
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                        ? 'bg-green-900/30 text-green-400'
+                        : 'bg-gray-700/50 text-gray-400'
                     }`}
                   >
                     <span
@@ -114,14 +114,14 @@ export function AgentsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm text-gray-600">{agent.version}</span>
+                  <span className="text-sm text-gray-400">{agent.version}</span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm text-gray-600">{agent.lastHeartbeat}</span>
+                  <span className="text-sm text-gray-400">{agent.lastHeartbeat}</span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-24 h-2 bg-surface-overlay rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full"
                         style={{
@@ -129,13 +129,13 @@ export function AgentsPage() {
                         }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">
                       {agent.runningTasks}/{agent.maxTasks}
                     </span>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <button className="p-1 text-gray-400 hover:text-gray-600">
+                  <button className="p-1 text-gray-400 hover:text-gray-300">
                     <MoreVertical className="w-4 h-4" />
                   </button>
                 </td>

@@ -153,7 +153,7 @@ export function IntegrationStudioPage() {
         <NodeToolbox />
 
         {/* Canvas */}
-        <div className="flex-1 bg-gray-50">
+        <div className="flex-1 bg-surface-base">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -175,9 +175,9 @@ export function IntegrationStudioPage() {
               nodeStrokeWidth={3}
               zoomable
               pannable
-              className="bg-white border border-gray-200 rounded-lg"
+              className="bg-surface-raised/80 border border-surface-border rounded-lg"
             />
-            <Panel position="top-right" className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <Panel position="top-right" className="bg-surface-raised/80 rounded-lg shadow-glass border border-surface-border p-2">
               <div className="text-xs text-gray-500">
                 {nodes.length} nodes · {edges.length} connections
               </div>

@@ -61,15 +61,15 @@ export function GovernanceDashboardPage() {
   const pendingCount = allApprovals?.filter((a: ApprovalRequestWithWorkflow) => a.request.status === 'pending').length ?? 0;
 
   const getComplianceColor = (score: number) => {
-    if (score >= 90) return 'text-green-600 bg-green-50';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
+    if (score >= 90) return 'text-green-600 bg-green-900/30';
+    if (score >= 70) return 'text-yellow-600 bg-yellow-900/30';
+    return 'text-red-600 bg-red-900/30';
   };
 
   const getStatusBadge = (score: number) => {
-    if (score >= 90) return 'bg-green-100 text-green-700';
-    if (score >= 70) return 'bg-yellow-100 text-yellow-700';
-    return 'bg-red-100 text-red-700';
+    if (score >= 90) return 'bg-green-900/40 text-green-400';
+    if (score >= 70) return 'bg-yellow-900/40 text-yellow-400';
+    return 'bg-red-900/40 text-red-400';
   };
 
   const getStatusLabel = (score: number) => {
@@ -81,15 +81,15 @@ export function GovernanceDashboardPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/40 text-red-400';
       case 'high':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-orange-900/40 text-orange-400';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-900/40 text-yellow-400';
       case 'low':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/40 text-blue-400';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300';
     }
   };
 
@@ -100,7 +100,7 @@ export function GovernanceDashboardPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-gray-900 font-medium">Failed to load governance data</p>
+          <p className="text-white font-medium">Failed to load governance data</p>
           <p className="text-sm text-gray-500 mt-1">{(complianceError as Error).message}</p>
         </div>
       </div>
@@ -112,14 +112,14 @@ export function GovernanceDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Governance Center</h1>
+          <h1 className="text-2xl font-bold text-white">Governance Center</h1>
           <p className="text-gray-500">Policy enforcement, compliance, and approval management</p>
         </div>
         <div className="flex items-center gap-3">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
@@ -142,9 +142,9 @@ export function GovernanceDashboardPage() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between">
-            <div className="p-2 bg-green-50 rounded-lg">
+            <div className="p-2 bg-green-900/30 rounded-lg">
               <Shield className="w-5 h-5 text-green-600" />
             </div>
           </div>
@@ -152,15 +152,15 @@ export function GovernanceDashboardPage() {
             {complianceLoading ? (
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             ) : (
-              <p className="text-3xl font-bold text-gray-900">{overallScore.toFixed(1)}%</p>
+              <p className="text-3xl font-bold text-white">{overallScore.toFixed(1)}%</p>
             )}
             <p className="text-sm font-medium text-gray-500">Overall Compliance</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between">
-            <div className="p-2 bg-blue-50 rounded-lg">
+            <div className="p-2 bg-blue-900/30 rounded-lg">
               <FileCheck className="w-5 h-5 text-blue-600" />
             </div>
             <span className="text-xs font-medium text-gray-500">{policyActive} active</span>
@@ -169,15 +169,15 @@ export function GovernanceDashboardPage() {
             {policiesLoading ? (
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             ) : (
-              <p className="text-3xl font-bold text-gray-900">{policyTotal}</p>
+              <p className="text-3xl font-bold text-white">{policyTotal}</p>
             )}
             <p className="text-sm font-medium text-gray-500">Policies</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between">
-            <div className="p-2 bg-yellow-50 rounded-lg">
+            <div className="p-2 bg-yellow-900/30 rounded-lg">
               <ClipboardCheck className="w-5 h-5 text-yellow-600" />
             </div>
             <span className="text-xs font-medium text-yellow-600">{pendingCount} pending</span>
@@ -186,15 +186,15 @@ export function GovernanceDashboardPage() {
             {approvalsLoading ? (
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             ) : (
-              <p className="text-3xl font-bold text-gray-900">{approvedCount}</p>
+              <p className="text-3xl font-bold text-white">{approvedCount}</p>
             )}
             <p className="text-sm font-medium text-gray-500">Approvals (30d)</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between">
-            <div className="p-2 bg-red-50 rounded-lg">
+            <div className="p-2 bg-red-900/30 rounded-lg">
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
           </div>
@@ -202,7 +202,7 @@ export function GovernanceDashboardPage() {
             {violationsLoading ? (
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             ) : (
-              <p className="text-3xl font-bold text-gray-900">{openViolationCount}</p>
+              <p className="text-3xl font-bold text-white">{openViolationCount}</p>
             )}
             <p className="text-sm font-medium text-gray-500">Open Violations</p>
           </div>
@@ -210,9 +210,9 @@ export function GovernanceDashboardPage() {
       </div>
 
       {/* Compliance Frameworks */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Compliance Frameworks</h2>
+          <h2 className="text-lg font-semibold text-white">Compliance Frameworks</h2>
           <a href="/governance/compliance" className="text-sm text-primary-600 hover:text-primary-700">
             View details
           </a>
@@ -226,10 +226,10 @@ export function GovernanceDashboardPage() {
             {complianceResults.map((framework: AssessmentResult) => (
               <div
                 key={framework.framework_id}
-                className="p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
+                className="p-4 border border-surface-border rounded-lg hover:border-surface-border transition-colors"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-gray-900">{framework.framework_name}</h3>
+                  <h3 className="font-medium text-white">{framework.framework_name}</h3>
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${getStatusBadge(
                       framework.compliance_score
@@ -248,9 +248,9 @@ export function GovernanceDashboardPage() {
                     </p>
                   </div>
                   <div className="flex gap-1">
-                    <div className="w-2 bg-green-200 rounded" style={{ height: `${framework.compliant / framework.total_controls * 32}px` }} />
-                    <div className="w-2 bg-yellow-200 rounded" style={{ height: `${framework.partial / framework.total_controls * 32}px` }} />
-                    <div className="w-2 bg-red-200 rounded" style={{ height: `${framework.non_compliant / framework.total_controls * 32}px` }} />
+                    <div className="w-2 bg-green-800 rounded" style={{ height: `${framework.compliant / framework.total_controls * 32}px` }} />
+                    <div className="w-2 bg-yellow-800 rounded" style={{ height: `${framework.partial / framework.total_controls * 32}px` }} />
+                    <div className="w-2 bg-red-800 rounded" style={{ height: `${framework.non_compliant / framework.total_controls * 32}px` }} />
                   </div>
                 </div>
               </div>
@@ -264,9 +264,9 @@ export function GovernanceDashboardPage() {
       {/* Pending Approvals & Recent Violations */}
       <div className="grid grid-cols-2 gap-6">
         {/* Pending Approvals */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Pending Approvals</h2>
+            <h2 className="text-lg font-semibold text-white">Pending Approvals</h2>
             <a href="/governance/approvals" className="text-sm text-primary-600 hover:text-primary-700">
               View all
             </a>
@@ -280,22 +280,22 @@ export function GovernanceDashboardPage() {
               {pendingApprovals.map((approval: ApprovalRequestWithWorkflow) => (
                 <div
                   key={approval.request.id}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                  className="p-3 bg-surface-overlay/50 rounded-lg border border-surface-border"
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-gray-500">{approval.request.id.slice(0, 8)}</span>
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-900/40 text-blue-400 rounded">
                           {approval.request.resource_type}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-gray-900">{approval.workflow_name}</p>
+                      <p className="text-sm font-medium text-white">{approval.workflow_name}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {approval.request.requester_id} · {formatRelativeTime(approval.request.created_at)}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
+                    <span className="text-xs px-2 py-1 bg-yellow-900/40 text-yellow-400 rounded-full">
                       {approval.current_stage_name}
                     </span>
                   </div>
@@ -308,9 +308,9 @@ export function GovernanceDashboardPage() {
         </div>
 
         {/* Recent Violations */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Violations</h2>
+            <h2 className="text-lg font-semibold text-white">Recent Violations</h2>
             <a href="/governance/policies" className="text-sm text-primary-600 hover:text-primary-700">
               View all
             </a>
@@ -324,7 +324,7 @@ export function GovernanceDashboardPage() {
               {recentViolations.map((violation: PolicyViolation) => (
                 <div
                   key={violation.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100"
+                  className="flex items-center justify-between p-3 bg-surface-overlay/50 rounded-lg border border-surface-border"
                 >
                   <div className="flex items-center gap-3">
                     {violation.status === 'open' ? (
@@ -333,7 +333,7 @@ export function GovernanceDashboardPage() {
                       <CheckCircle className="w-5 h-5 text-green-500" />
                     )}
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{violation.policy_id}</p>
+                      <p className="text-sm font-medium text-white">{violation.policy_id}</p>
                       <p className="text-xs text-gray-500">{violation.resource_type}: {violation.resource_id}</p>
                     </div>
                   </div>
@@ -359,9 +359,9 @@ export function GovernanceDashboardPage() {
       {/* Audit Activity & Standards */}
       <div className="grid grid-cols-3 gap-6">
         {/* Audit Activity */}
-        <div className="col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="col-span-2 bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Audit Activity</h2>
+            <h2 className="text-lg font-semibold text-white">Audit Activity</h2>
             <a href="/governance/audit" className="text-sm text-primary-600 hover:text-primary-700">
               View audit log
             </a>
@@ -372,26 +372,26 @@ export function GovernanceDashboardPage() {
             </div>
           ) : auditStats ? (
             <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="p-4 bg-surface-overlay/50 rounded-lg">
+                <p className="text-2xl font-bold text-white">
                   {auditStats.total_entries.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">Total Entries</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{auditStats.entries_today}</p>
+              <div className="p-4 bg-surface-overlay/50 rounded-lg">
+                <p className="text-2xl font-bold text-white">{auditStats.entries_today}</p>
                 <p className="text-xs text-gray-500">Today</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{auditStats.unique_actors}</p>
+              <div className="p-4 bg-surface-overlay/50 rounded-lg">
+                <p className="text-2xl font-bold text-white">{auditStats.unique_actors}</p>
                 <p className="text-xs text-gray-500">Unique Actors</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-surface-overlay/50 rounded-lg">
                 <div className="flex flex-wrap gap-1">
                   {auditStats.top_actions.map((item) => (
                     <span
                       key={item.action}
-                      className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded"
+                      className="text-xs px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded"
                     >
                       {item.action}
                     </span>
@@ -406,36 +406,36 @@ export function GovernanceDashboardPage() {
         </div>
 
         {/* Quick Links */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl p-6 shadow-glass border border-surface-border">
+          <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
           <div className="space-y-2">
             <a
               href="/governance/policies"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <Scale className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-700">Manage Policies</span>
+              <span className="text-sm text-gray-300">Manage Policies</span>
             </a>
             <a
               href="/governance/standards"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <BookOpen className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-700">View Standards</span>
+              <span className="text-sm text-gray-300">View Standards</span>
             </a>
             <a
               href="/governance/approvals"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <ClipboardCheck className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-700">Approval Workflows</span>
+              <span className="text-sm text-gray-300">Approval Workflows</span>
             </a>
             <a
               href="/governance/audit"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
             >
               <FileCheck className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-700">Audit Log</span>
+              <span className="text-sm text-gray-300">Audit Log</span>
             </a>
           </div>
         </div>

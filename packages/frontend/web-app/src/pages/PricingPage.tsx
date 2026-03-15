@@ -15,17 +15,17 @@ function PlanCard({ plan, isCurrent }: { plan: Plan; isCurrent: boolean }) {
   const isEnterprise = plan.name === 'enterprise';
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border-2 p-6 flex flex-col ${isBusiness ? 'border-primary-500 ring-2 ring-primary-100' : 'border-gray-100'}`}>
+    <div className={`bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border-2 p-6 flex flex-col ${isBusiness ? 'border-primary-500 ring-2 ring-primary-900/50' : 'border-surface-border'}`}>
       {isBusiness && (
-        <div className="text-xs font-semibold text-primary-600 uppercase tracking-wide mb-2">Most Popular</div>
+        <div className="text-xs font-semibold text-primary-400 uppercase tracking-wide mb-2">Most Popular</div>
       )}
-      <h3 className="text-xl font-bold text-gray-900">{plan.display_name}</h3>
+      <h3 className="text-xl font-bold text-white">{plan.display_name}</h3>
       <div className="mt-2">
         {isEnterprise ? (
-          <span className="text-3xl font-bold text-gray-900">Custom</span>
+          <span className="text-3xl font-bold text-white">Custom</span>
         ) : (
           <>
-            <span className="text-3xl font-bold text-gray-900">${(plan.price_cents / 100).toLocaleString()}</span>
+            <span className="text-3xl font-bold text-white">${(plan.price_cents / 100).toLocaleString()}</span>
             <span className="text-gray-500">/mo</span>
           </>
         )}
@@ -34,7 +34,7 @@ function PlanCard({ plan, isCurrent }: { plan: Plan; isCurrent: boolean }) {
 
       <ul className="mt-6 space-y-3 flex-1">
         {(tierHighlights[plan.name] || []).map((item) => (
-          <li key={item} className="flex items-center gap-2 text-sm text-gray-700">
+          <li key={item} className="flex items-center gap-2 text-sm text-gray-300">
             <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
             {item}
           </li>
@@ -43,11 +43,11 @@ function PlanCard({ plan, isCurrent }: { plan: Plan; isCurrent: boolean }) {
 
       <div className="mt-6">
         {isCurrent ? (
-          <button disabled className="w-full px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg">
+          <button disabled className="w-full px-4 py-2 text-sm font-medium text-gray-500 bg-gray-700/50 rounded-lg">
             Current Plan
           </button>
         ) : isEnterprise ? (
-          <a href="mailto:sales@sysilo.io" className="block w-full px-4 py-2 text-sm font-medium text-center text-primary-600 border border-primary-600 rounded-lg hover:bg-primary-50">
+          <a href="mailto:sales@sysilo.io" className="block w-full px-4 py-2 text-sm font-medium text-center text-primary-400 border border-primary-600 rounded-lg hover:bg-white/5">
             Contact Sales
           </a>
         ) : (
@@ -72,7 +72,7 @@ export function PricingPage() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Choose Your Plan</h1>
+        <h1 className="text-2xl font-bold text-white">Choose Your Plan</h1>
         <p className="text-gray-500 mt-1">Scale your integration platform as you grow</p>
       </div>
 
