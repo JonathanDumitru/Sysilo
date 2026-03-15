@@ -11,6 +11,7 @@ use crate::scoring::{ScoringService, TimeQuadrant};
 use crate::scenarios::ScenariosService;
 use crate::playbooks::PlaybooksService;
 use crate::recommendations::RecommendationsService;
+use crate::live_scoring::{LiveScoringService, ScoreEvent};
 
 // ============================================================================
 // App State
@@ -20,11 +21,12 @@ use crate::recommendations::RecommendationsService;
 pub struct AppState {
     pub pool: PgPool,
     pub ai_service_url: String,
+    pub live_scoring: LiveScoringService,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, ai_service_url: String) -> Self {
-        Self { pool, ai_service_url }
+    pub fn new(pool: PgPool, ai_service_url: String, live_scoring: LiveScoringService) -> Self {
+        Self { pool, ai_service_url, live_scoring }
     }
 }
 
@@ -862,4 +864,90 @@ pub async fn get_cost_analysis(
 
     let result: std::collections::HashMap<_, _> = costs.into_iter().collect();
     Ok(Json(serde_json::to_value(result).unwrap()))
+}
+
+// ============================================================================
+// Live Scoring Endpoints
+// ============================================================================
+
+pub async fn list_live_scores(
+    State(state): State<AppState>,
+    Query(filters): Query<crate::live_scoring::LiveScoreFilters>,
+) -> Result<Json<Vec<crate::live_scoring::LiveTimeScore>>, StatusCode> {
+    let scores = state.live_scoring.get_live_scores(filters).await
+        .map_err(|e| {
+            tracing::error!("Failed to list live scores: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(scores))
+}
+
+pub async fn get_live_score(
+    State(state): State<AppState>,
+    Path(asset_id): Path<Uuid>,
+    Query(tenant): Query<TenantQuery>,
+) -> Result<Json<crate::live_scoring::LiveTimeScore>, StatusCode> {
+    let score = state.live_scoring.get_live_score(tenant.tenant_id, asset_id).await
+        .map_err(|e| {
+            tracing::error!("Failed to get live score: {}", e);
+            StatusCode::NOT_FOUND
+        })?;
+    Ok(Json(score))
+}
+
+pub async fn get_live_score_drifts(
+    State(state): State<AppState>,
+    Path(asset_id): Path<Uuid>,
+    Query(tenant): Query<TenantQuery>,
+) -> Result<Json<Vec<crate::live_scoring::ScoreDrift>>, StatusCode> {
+    let drifts = state.live_scoring.get_drift_history(tenant.tenant_id, asset_id).await
+        .map_err(|e| {
+            tracing::error!("Failed to get drift history: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(drifts))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubmitScoreEventRequest {
+    pub tenant_id: Uuid,
+    #[serde(flatten)]
+    pub event: ScoreEvent,
+}
+
+pub async fn submit_score_event(
+    State(state): State<AppState>,
+    Json(req): Json<SubmitScoreEventRequest>,
+) -> Result<Json<crate::live_scoring::LiveTimeScore>, StatusCode> {
+    let score = state.live_scoring.process_event(req.tenant_id, req.event).await
+        .map_err(|e| {
+            tracing::error!("Failed to process score event: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(score))
+}
+
+pub async fn get_score_feed(
+    State(state): State<AppState>,
+    Query(query): Query<crate::live_scoring::ScoreFeedQuery>,
+) -> Result<Json<Vec<crate::live_scoring::ScoreFeedEntry>>, StatusCode> {
+    let limit = query.limit.unwrap_or(50);
+    let feed = state.live_scoring.get_score_feed(query.tenant_id, limit, query.since).await
+        .map_err(|e| {
+            tracing::error!("Failed to get score feed: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(feed))
+}
+
+pub async fn get_live_portfolio_summary(
+    State(state): State<AppState>,
+    Query(tenant): Query<TenantQuery>,
+) -> Result<Json<crate::live_scoring::LivePortfolioSummary>, StatusCode> {
+    let summary = state.live_scoring.get_portfolio_summary(tenant.tenant_id).await
+        .map_err(|e| {
+            tracing::error!("Failed to get portfolio summary: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(summary))
 }

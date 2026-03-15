@@ -17,22 +17,34 @@ mod config;
 mod connections;
 mod consumer;
 mod engine;
+mod healing;
 mod kafka;
+mod marketplace;
 mod middleware;
 mod playbooks;
 mod storage;
+mod templates;
 
 use crate::config::Config;
 use crate::engine::Engine;
 use crate::connections::api as connections_api;
+use crate::healing::api as healing_api;
+use crate::healing::HealingService;
+use crate::marketplace::api as marketplace_api;
+use crate::marketplace::MarketplaceService;
 use crate::playbooks::api as playbooks_api;
 use crate::storage::Storage;
+use crate::templates::api as templates_api;
+use crate::templates::TemplatesService;
 
 /// Application state shared across handlers
 pub struct AppState {
     pub config: Config,
     pub storage: Storage,
     pub engine: Engine,
+    pub healing: Option<Arc<HealingService>>,
+    pub marketplace: Option<MarketplaceService>,
+    pub templates: Option<TemplatesService>,
 }
 
 #[tokio::main]
@@ -115,11 +127,77 @@ async fn main() -> anyhow::Result<()> {
         info!("Result consumer started");
     }
 
+    // Initialize healing service
+    let healing_config = healing::HealingConfig {
+        enabled: std::env::var("HEALING_ENABLED")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(true),
+        auto_approve_low_risk: std::env::var("HEALING_AUTO_APPROVE_LOW_RISK")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(true),
+        max_auto_retries: std::env::var("HEALING_MAX_AUTO_RETRIES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(3),
+        ai_service_url: std::env::var("AI_SERVICE_URL")
+            .unwrap_or_else(|_| "http://localhost:8090".to_string()),
+        governance_service_url: std::env::var("GOVERNANCE_SERVICE_URL")
+            .unwrap_or_else(|_| "http://localhost:8086".to_string()),
+    };
+
+    let healing = match HealingService::new(&config.database.url, healing_config).await {
+        Ok(service) => {
+            info!("Healing service initialized");
+            let service = Arc::new(service);
+            // Start background approval checker
+            healing::spawn_approval_checker(Arc::clone(&service));
+            info!("Healing approval checker started");
+            Some(service)
+        }
+        Err(e) => {
+            tracing::warn!("Healing service not available: {}", e);
+            None
+        }
+    };
+
+    // Initialize marketplace service
+    let marketplace = match sqlx::postgres::PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&config.database.url)
+        .await
+    {
+        Ok(pool) => {
+            info!("Marketplace service initialized");
+            Some(MarketplaceService::new(pool))
+        }
+        Err(e) => {
+            tracing::warn!("Marketplace service not available: {}", e);
+            None
+        }
+    };
+
+    // Initialize templates service
+    let templates = match TemplatesService::new(&config.database.url).await {
+        Ok(svc) => {
+            info!("Templates service initialized");
+            Some(svc)
+        }
+        Err(e) => {
+            tracing::warn!("Templates service not available: {}", e);
+            None
+        }
+    };
+
     // Create application state
     let state = Arc::new(AppState {
         config: config.clone(),
         storage,
         engine,
+        healing,
+        marketplace,
+        templates,
     });
 
     // Routes requiring tenant context
@@ -156,6 +234,38 @@ async fn main() -> anyhow::Result<()> {
         .route("/connections/:id", put(connections_api::update_connection))
         .route("/connections/:id", delete(connections_api::delete_connection))
         .route("/connections/:id/test", post(connections_api::test_connection))
+        // Healing endpoints
+        .route("/healing/proposals", get(healing_api::list_proposals))
+        .route("/healing/proposals/:id", get(healing_api::get_proposal))
+        .route("/healing/proposals/:id/apply", post(healing_api::apply_proposal))
+        .route("/healing/diagnose", post(healing_api::diagnose))
+        .route("/healing/stats", get(healing_api::get_stats))
+        .route("/healing/config", put(healing_api::update_config))
+        // Marketplace endpoints
+        .route("/marketplace/listings", get(marketplace_api::list_listings))
+        .route("/marketplace/listings", post(marketplace_api::publish_listing))
+        .route("/marketplace/listings/featured", get(marketplace_api::get_featured_listings))
+        .route("/marketplace/listings/:id", get(marketplace_api::get_listing))
+        .route("/marketplace/listings/:id/submit", post(marketplace_api::submit_for_review))
+        .route("/marketplace/listings/:id/approve", post(marketplace_api::approve_listing))
+        .route("/marketplace/listings/:id/reject", post(marketplace_api::reject_listing))
+        .route("/marketplace/listings/:id/install", post(marketplace_api::install_connector))
+        .route("/marketplace/listings/:id/uninstall", post(marketplace_api::uninstall_connector))
+        .route("/marketplace/listings/:id/reviews", get(marketplace_api::list_reviews))
+        .route("/marketplace/listings/:id/reviews", post(marketplace_api::add_review))
+        .route("/marketplace/listings/:id/analytics", get(marketplace_api::get_publisher_analytics))
+        .route("/marketplace/revenue", get(marketplace_api::get_revenue_summary))
+        // Industry Templates endpoints
+        .route("/templates", get(templates_api::list_templates))
+        .route("/templates", post(templates_api::create_template))
+        .route("/templates/featured", get(templates_api::get_featured_templates))
+        .route("/templates/:id", get(templates_api::get_template))
+        .route("/templates/:id/publish", post(templates_api::publish_template))
+        .route("/templates/verticals/:vertical", get(templates_api::get_templates_by_vertical))
+        .route("/templates/deploy", post(templates_api::deploy_template))
+        .route("/templates/deployments/:id", get(templates_api::get_deployment))
+        .route("/templates/deployments", get(templates_api::list_deployments))
+        .route("/templates/deployments/:id/rollback", post(templates_api::rollback_deployment))
         // Tenant context middleware: strict fail-closed context extraction.
         .layer(axum_middleware::from_fn(
             middleware::tenant_context_middleware,

@@ -14,20 +14,28 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod api;
 mod metrics;
 mod alerts;
+mod evaluator;
 mod incidents;
 mod notifications;
+mod digital_twin;
+mod immune_system;
 
 use crate::metrics::MetricsService;
 use crate::alerts::AlertsService;
+use crate::evaluator::AlertEvaluator;
 use crate::incidents::IncidentsService;
 use crate::notifications::NotificationService;
+use crate::digital_twin::{DigitalTwinService, TwinLearner};
+use crate::immune_system::ImmuneSystemService;
 
 /// Application state shared across handlers
 pub struct AppState {
-    pub metrics: MetricsService,
-    pub alerts: AlertsService,
-    pub incidents: IncidentsService,
-    pub notifications: NotificationService,
+    pub metrics: Arc<MetricsService>,
+    pub alerts: Arc<AlertsService>,
+    pub incidents: Arc<IncidentsService>,
+    pub notifications: Arc<NotificationService>,
+    pub digital_twins: Arc<DigitalTwinService>,
+    pub immune_system: Arc<ImmuneSystemService>,
 }
 
 #[tokio::main]
@@ -51,16 +59,48 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "localhost:9092".to_string());
 
     // Initialize services
-    let metrics = MetricsService::new(&database_url).await?;
-    let alerts = AlertsService::new(&database_url).await?;
-    let incidents = IncidentsService::new(&database_url).await?;
-    let notifications = NotificationService::new(&database_url).await?;
+    let metrics = Arc::new(MetricsService::new(&database_url).await?);
+    let alerts = Arc::new(AlertsService::new(&database_url).await?);
+    let incidents = Arc::new(IncidentsService::new(&database_url).await?);
+    let notifications = Arc::new(NotificationService::new(&database_url).await?);
+    let digital_twins = Arc::new(DigitalTwinService::new(&database_url).await?);
+    let immune_system = Arc::new(ImmuneSystemService::new(&database_url).await?);
+
+    // Start the alert evaluation engine
+    let eval_interval: u64 = std::env::var("ALERT_EVAL_INTERVAL_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(60);
+
+    let evaluator = AlertEvaluator::new(
+        Arc::clone(&alerts),
+        Arc::clone(&metrics),
+        Arc::clone(&notifications),
+        eval_interval,
+    );
+    let _evaluator_handle = evaluator.start();
+    info!("Alert evaluator started with {}s interval", eval_interval);
+
+    // Start the digital twin background learner
+    let twin_learner_interval: u64 = std::env::var("TWIN_LEARNER_INTERVAL_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(300); // 5 minutes default
+
+    let twin_learner = TwinLearner::new(
+        Arc::clone(&digital_twins),
+        twin_learner_interval,
+    );
+    let _twin_learner_handle = twin_learner.start();
+    info!("Digital twin learner started with {}s interval", twin_learner_interval);
 
     let state = Arc::new(AppState {
         metrics,
         alerts,
         incidents,
         notifications,
+        digital_twins,
+        immune_system,
     });
 
     // Build router
@@ -97,6 +137,29 @@ async fn main() -> anyhow::Result<()> {
         .route("/notifications/channels/:id", put(api::update_channel))
         .route("/notifications/channels/:id", delete(api::delete_channel))
         .route("/notifications/test/:id", post(api::test_channel))
+        // Digital Twin endpoints
+        .route("/twins", get(api::list_twins))
+        .route("/twins", post(api::create_twin))
+        .route("/twins/anomalies", get(api::list_twin_anomalies))
+        .route("/twins/predictions", get(api::list_twin_predictions))
+        .route("/twins/fleet-health", get(api::fleet_health))
+        .route("/twins/:integration_id", get(api::get_twin))
+        .route("/twins/:integration_id/learn", post(api::learn_twin_baseline))
+        .route("/twins/:integration_id/update", post(api::update_twin_state))
+        .route("/twins/:integration_id/simulate", post(api::simulate_twin_change))
+        // Immune System endpoints
+        .route("/immune/signals", get(immune_system::api::list_danger_signals))
+        .route("/immune/signals", post(immune_system::api::report_danger_signal))
+        .route("/immune/signals/:id/acknowledge", post(immune_system::api::acknowledge_signal))
+        .route("/immune/signals/:id/resolve", post(immune_system::api::resolve_signal))
+        .route("/immune/signals/:id/remediate", post(immune_system::api::attempt_auto_remediation))
+        .route("/immune/correlate", post(immune_system::api::correlate_signals))
+        .route("/immune/memory", get(immune_system::api::list_immune_memories))
+        .route("/immune/memory", post(immune_system::api::record_remediation))
+        .route("/immune/vaccinate", post(immune_system::api::distribute_vaccination))
+        .route("/immune/vaccinations", get(immune_system::api::get_vaccination_history))
+        .route("/immune/status", get(immune_system::api::get_immune_status))
+        .route("/immune/resilience", get(immune_system::api::get_system_resilience_score))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

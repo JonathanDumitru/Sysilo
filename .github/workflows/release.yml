@@ -1,0 +1,263 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  GO_VERSION: "1.22"
+  RUST_VERSION: "stable"
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/sysilo
+
+jobs:
+  # ==========================
+  # Build Binaries
+  # ==========================
+
+  build-go:
+    name: Build Go (${{ matrix.binary }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - module: agent
+            binary: agent
+            build_path: ./cmd/agent
+          - module: services/agent-gateway
+            binary: agent-gateway
+            build_path: ./cmd/agent-gateway
+          - module: services/api-gateway
+            binary: api-gateway
+            build_path: ./cmd/api-gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+
+      - name: Build binary
+        working-directory: ${{ matrix.module }}
+        run: |
+          CGO_ENABLED=0 go build \
+            -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
+            -o ${{ matrix.binary }} \
+            ${{ matrix.build_path }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.module }}/${{ matrix.binary }}
+
+  build-rust:
+    name: Build Rust (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - integration-service
+          - data-service
+          - asset-service
+          - ops-service
+          - governance-service
+          - rationalization-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            services/${{ matrix.service }}/target
+          key: rust-release-${{ matrix.service }}-${{ hashFiles(format('services/{0}/Cargo.lock', matrix.service)) }}
+          restore-keys: |
+            rust-release-${{ matrix.service }}-
+
+      - name: Build release binary
+        working-directory: services/${{ matrix.service }}
+        run: cargo build --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}
+          path: services/${{ matrix.service }}/target/release/${{ matrix.service }}
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: packages/frontend/web-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/frontend/web-app
+        run: npm ci
+
+      - name: Build
+        working-directory: packages/frontend/web-app
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-app-dist
+          path: packages/frontend/web-app/dist
+
+  # ==========================
+  # Docker Images
+  # ==========================
+
+  docker:
+    name: Docker (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: [build-go, build-rust, build-frontend]
+    strategy:
+      matrix:
+        include:
+          - service: agent
+            context: agent
+            dockerfile: agent/Dockerfile
+          - service: agent-gateway
+            context: services/agent-gateway
+            dockerfile: services/agent-gateway/Dockerfile
+          - service: api-gateway
+            context: services/api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+          - service: ai-service
+            context: services/ai-service
+            dockerfile: services/ai-service/Dockerfile
+          - service: integration-service
+            context: services/integration-service
+            dockerfile: services/integration-service/Dockerfile
+          - service: data-service
+            context: services/data-service
+            dockerfile: services/data-service/Dockerfile
+          - service: asset-service
+            context: services/asset-service
+            dockerfile: services/asset-service/Dockerfile
+          - service: ops-service
+            context: services/ops-service
+            dockerfile: services/ops-service/Dockerfile
+          - service: governance-service
+            context: services/governance-service
+            dockerfile: services/governance-service/Dockerfile
+          - service: rationalization-service
+            context: services/rationalization-service
+            dockerfile: services/rationalization-service/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Check Dockerfile exists
+        id: dockerfile-check
+        run: |
+          if [ -f "${{ matrix.dockerfile }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dockerfile not found at ${{ matrix.dockerfile }}, skipping."
+          fi
+
+      - name: Build and push Docker image
+        if: steps.dockerfile-check.outputs.exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ==========================
+  # GitHub Release
+  # ==========================
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-go, build-rust, build-frontend, docker]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release
+          # Package Go binaries
+          for bin in agent agent-gateway api-gateway; do
+            if [ -f "artifacts/${bin}/${bin}" ]; then
+              chmod +x "artifacts/${bin}/${bin}"
+              tar -czf "release/${bin}-linux-amd64.tar.gz" -C "artifacts/${bin}" "${bin}"
+            fi
+          done
+          # Package Rust binaries
+          for svc in integration-service data-service asset-service ops-service governance-service rationalization-service; do
+            if [ -f "artifacts/${svc}/${svc}" ]; then
+              chmod +x "artifacts/${svc}/${svc}"
+              tar -czf "release/${svc}-linux-amd64.tar.gz" -C "artifacts/${svc}" "${svc}"
+            fi
+          done
+          # Package frontend
+          if [ -d "artifacts/web-app-dist" ]; then
+            tar -czf "release/web-app-dist.tar.gz" -C "artifacts/web-app-dist" .
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "${{ github.ref_name }}" ]; then
+            echo "## Changes since ${PREV_TAG}" > changelog.md
+            git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" >> changelog.md
+          else
+            echo "## Initial Release" > changelog.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: changelog.md
+          files: release/*
+          generate_release_notes: true

@@ -72,9 +72,10 @@ type CORSConfig struct {
 
 // RateLimitConfig holds rate limiting settings
 type RateLimitConfig struct {
-	Enabled        bool `yaml:"enabled"`
-	RequestsPerMin int  `yaml:"requests_per_minute"`
-	BurstSize      int  `yaml:"burst_size"`
+	Enabled         bool `yaml:"enabled"`
+	RequestsPerMin  int  `yaml:"requests_per_minute"`
+	RequestsPerHour int  `yaml:"requests_per_hour"`
+	BurstSize       int  `yaml:"burst_size"`
 }
 
 // ServicesConfig holds internal service addresses
@@ -123,9 +124,10 @@ func Default() *Config {
 			MaxAge:           86400, // 24 hours
 		},
 		RateLimit: RateLimitConfig{
-			Enabled:        true,
-			RequestsPerMin: 1000,
-			BurstSize:      50,
+			Enabled:         true,
+			RequestsPerMin:  1000,
+			RequestsPerHour: 10000,
+			BurstSize:       50,
 		},
 		Services: ServicesConfig{
 			AgentGateway:       "localhost:8082",

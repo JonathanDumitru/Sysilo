@@ -21,6 +21,12 @@ serde_json = "1.0"
 # Database
 sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
 
+# Graph database (Neo4j)
+neo4rs = "0.7"
+
+# Regex for PII detection
+regex = "1.10"
+
 # Kafka for streaming ingestion
 rdkafka = { version = "0.36", features = ["cmake-build"] }
 

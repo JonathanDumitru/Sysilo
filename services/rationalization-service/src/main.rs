@@ -14,6 +14,7 @@ mod scoring;
 mod scenarios;
 mod playbooks;
 mod recommendations;
+mod live_scoring;
 
 use api::AppState;
 
@@ -42,7 +43,40 @@ async fn main() -> Result<()> {
     let ai_service_url = std::env::var("AI_SERVICE_URL")
         .unwrap_or_else(|_| "http://localhost:8090".to_string());
 
-    let state = AppState::new(pool, ai_service_url);
+    // Initialize live scoring service
+    let live_scoring = live_scoring::LiveScoringService::from_pool(pool.clone());
+    live_scoring.create_tables().await?;
+    tracing::info!("Live scoring service initialized");
+
+    // Start background task for drift cleanup and trending detection
+    let bg_service = live_scoring.clone();
+    let _bg_handle = live_scoring::spawn_background_task(bg_service);
+    tracing::info!("Live scoring background task started");
+
+    // Start Kafka consumer for score events (non-blocking)
+    let kafka_brokers = std::env::var("KAFKA_BROKERS")
+        .unwrap_or_else(|_| "localhost:9092".to_string());
+    let kafka_group_id = std::env::var("KAFKA_GROUP_ID")
+        .unwrap_or_else(|_| "rationalization-live-scoring".to_string());
+    let kafka_service = live_scoring.clone();
+    tokio::spawn(async move {
+        match live_scoring::consumer::start_kafka_consumer(
+            kafka_service,
+            &kafka_brokers,
+            &kafka_group_id,
+        )
+        .await
+        {
+            Ok(_handle) => {
+                tracing::info!("Kafka consumer started for live scoring events");
+            }
+            Err(e) => {
+                tracing::warn!("Failed to start Kafka consumer (service will still work without it): {}", e);
+            }
+        }
+    });
+
+    let state = AppState::new(pool, ai_service_url, live_scoring);
 
     // CORS configuration
     let cors = CorsLayer::new()
@@ -87,6 +121,13 @@ async fn main() -> Result<()> {
         .route("/recommendations", get(api::list_recommendations))
         .route("/recommendations/generate", post(api::generate_recommendations))
         .route("/recommendations/:id", get(api::get_recommendation).put(api::update_recommendation_status))
+        // Live Scoring
+        .route("/live-scores", get(api::list_live_scores))
+        .route("/live-scores/event", post(api::submit_score_event))
+        .route("/live-scores/feed", get(api::get_score_feed))
+        .route("/live-scores/portfolio", get(api::get_live_portfolio_summary))
+        .route("/live-scores/:asset_id", get(api::get_live_score))
+        .route("/live-scores/:asset_id/drifts", get(api::get_live_score_drifts))
         // Analytics
         .route("/analytics/portfolio", get(api::get_portfolio_analytics))
         .route("/analytics/trends", get(api::get_score_trends))

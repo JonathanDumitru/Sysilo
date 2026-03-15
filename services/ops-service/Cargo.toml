@@ -38,9 +38,10 @@ async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 
-# Hashing for audit
+# Hashing for audit and HMAC signatures
 sha2 = "0.10"
 hex = "0.4"
+hmac = "0.12"
 
 [dev-dependencies]
 tokio-test = "0.4"

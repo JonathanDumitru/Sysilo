@@ -185,6 +185,71 @@ func (r *Registry) FindAvailableAgent(tenantID string, requiredAdapter string) *
 	return nil
 }
 
+// FindBestAgent finds the least-loaded agent for a tenant that supports the
+// required adapter. It returns the agent with the most remaining capacity
+// (fewest running tasks relative to its max). If agentID is non-empty, it
+// tries to target that specific agent first.
+func (r *Registry) FindBestAgent(tenantID, requiredAdapter, preferredAgentID string) *Agent {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	// If a specific agent is requested, try it first
+	if preferredAgentID != "" {
+		if agent, ok := r.agents[preferredAgentID]; ok {
+			if agent.TenantID == tenantID &&
+				agent.Status == AgentStatusConnected &&
+				len(agent.RunningTasks) < agent.Capabilities.MaxConcurrentTasks &&
+				r.supportsAdapter(agent, requiredAdapter) {
+				return agent
+			}
+		}
+	}
+
+	tenantAgents, ok := r.byTenant[tenantID]
+	if !ok {
+		return nil
+	}
+
+	var bestAgent *Agent
+	bestAvailableSlots := -1
+
+	for _, agent := range tenantAgents {
+		if agent.Status != AgentStatusConnected {
+			continue
+		}
+
+		availableSlots := agent.Capabilities.MaxConcurrentTasks - len(agent.RunningTasks)
+		if availableSlots <= 0 {
+			continue
+		}
+
+		if !r.supportsAdapter(agent, requiredAdapter) {
+			continue
+		}
+
+		if availableSlots > bestAvailableSlots {
+			bestAgent = agent
+			bestAvailableSlots = availableSlots
+		}
+	}
+
+	return bestAgent
+}
+
+// supportsAdapter checks whether an agent supports the given adapter.
+// An empty requiredAdapter matches any agent.
+func (r *Registry) supportsAdapter(agent *Agent, requiredAdapter string) bool {
+	if requiredAdapter == "" {
+		return true
+	}
+	for _, adapter := range agent.Capabilities.SupportedAdapters {
+		if adapter == requiredAdapter {
+			return true
+		}
+	}
+	return false
+}
+
 // Stats returns registry statistics
 func (r *Registry) Stats() RegistryStats {
 	r.mu.RLock()

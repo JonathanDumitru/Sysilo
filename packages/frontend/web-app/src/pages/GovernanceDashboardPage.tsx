@@ -8,99 +8,57 @@ import {
   BookOpen,
   Scale,
   XCircle,
+  Loader2,
 } from 'lucide-react';
+import {
+  usePolicies,
+  useViolations,
+  useApprovalRequests,
+  useAuditStats,
+  useComplianceSummary,
+  useRunAssessment,
+} from '../hooks/useGovernance';
+import type { AssessmentResult, ApprovalRequestWithWorkflow, PolicyViolation } from '../services/governance';
 
-// Mock data
-const complianceOverview = {
-  overallScore: 87.5,
-  frameworks: [
-    { name: 'SOC 2 Type II', score: 92, status: 'compliant', controls: { total: 64, compliant: 59, nonCompliant: 3, partial: 2 } },
-    { name: 'GDPR', score: 85, status: 'partial', controls: { total: 42, compliant: 34, nonCompliant: 4, partial: 4 } },
-    { name: 'ISO 27001', score: 78, status: 'partial', controls: { total: 114, compliant: 87, nonCompliant: 15, partial: 12 } },
-    { name: 'HIPAA', score: 95, status: 'compliant', controls: { total: 45, compliant: 43, nonCompliant: 1, partial: 1 } },
-  ],
-};
+function formatRelativeTime(timestamp: string): string {
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
 
-const policyStats = {
-  total: 24,
-  active: 22,
-  violations: {
-    open: 8,
-    resolved: 156,
-    thisWeek: 3,
-  },
-};
-
-const approvalStats = {
-  pending: 5,
-  approved: 42,
-  rejected: 3,
-  avgTime: '4.2 hours',
-};
-
-const pendingApprovals = [
-  {
-    id: 'REQ-001',
-    type: 'Integration',
-    name: 'Salesforce Production Connection',
-    requester: 'John Doe',
-    created: '2 hours ago',
-    stage: 'Security Review',
-  },
-  {
-    id: 'REQ-002',
-    type: 'Agent',
-    name: 'New Production Agent',
-    requester: 'Jane Smith',
-    created: '5 hours ago',
-    stage: 'IT Approval',
-  },
-  {
-    id: 'REQ-003',
-    type: 'Data Export',
-    name: 'Customer Data Export',
-    requester: 'Bob Wilson',
-    created: '1 day ago',
-    stage: 'Compliance Review',
-  },
-];
-
-const recentViolations = [
-  {
-    id: '1',
-    policy: 'Naming Convention',
-    resource: 'integration-test-123',
-    severity: 'low',
-    status: 'open',
-    created: '1 hour ago',
-  },
-  {
-    id: '2',
-    policy: 'Security Policy',
-    resource: 'api-connection-xyz',
-    severity: 'high',
-    status: 'open',
-    created: '3 hours ago',
-  },
-  {
-    id: '3',
-    policy: 'Data Retention',
-    resource: 'data-export-job',
-    severity: 'medium',
-    status: 'resolved',
-    created: '1 day ago',
-  },
-];
-
-const auditStats = {
-  totalEntries: 15420,
-  todayEntries: 234,
-  uniqueActors: 45,
-  topActions: ['create', 'update', 'delete', 'approve'],
-};
+  if (diffDay > 0) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  if (diffHour > 0) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+  if (diffMin > 0) return `${diffMin} min${diffMin > 1 ? 's' : ''} ago`;
+  return 'just now';
+}
 
 export function GovernanceDashboardPage() {
   const [timeRange, setTimeRange] = useState('30d');
+
+  // Real data hooks
+  const { data: complianceResults, isLoading: complianceLoading, error: complianceError } = useComplianceSummary();
+  const { data: policies, isLoading: policiesLoading } = usePolicies();
+  const { data: openViolations, isLoading: violationsLoading } = useViolations('open');
+  const { data: recentViolations, isLoading: recentViolationsLoading } = useViolations(undefined, 5);
+  const { data: allApprovals, isLoading: approvalsLoading } = useApprovalRequests();
+  const { data: pendingApprovals, isLoading: pendingApprovalsLoading } = useApprovalRequests('pending');
+  const { data: auditStats, isLoading: auditLoading } = useAuditStats();
+  const runAssessment = useRunAssessment();
+
+  // Derived stats
+  const overallScore = complianceResults && complianceResults.length > 0
+    ? complianceResults.reduce((sum: number, r: AssessmentResult) => sum + r.compliance_score, 0) / complianceResults.length
+    : 0;
+
+  const policyTotal = policies?.length ?? 0;
+  const policyActive = policies?.filter((p) => p.enabled).length ?? 0;
+  const openViolationCount = openViolations?.length ?? 0;
+
+  const approvedCount = allApprovals?.filter((a: ApprovalRequestWithWorkflow) => a.request.status === 'approved').length ?? 0;
+  const pendingCount = allApprovals?.filter((a: ApprovalRequestWithWorkflow) => a.request.status === 'pending').length ?? 0;
 
   const getComplianceColor = (score: number) => {
     if (score >= 90) return 'text-green-600 bg-green-50';
@@ -108,17 +66,16 @@ export function GovernanceDashboardPage() {
     return 'text-red-600 bg-red-50';
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'compliant':
-        return 'bg-green-100 text-green-700';
-      case 'partial':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'non_compliant':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
+  const getStatusBadge = (score: number) => {
+    if (score >= 90) return 'bg-green-100 text-green-700';
+    if (score >= 70) return 'bg-yellow-100 text-yellow-700';
+    return 'bg-red-100 text-red-700';
+  };
+
+  const getStatusLabel = (score: number) => {
+    if (score >= 90) return 'compliant';
+    if (score >= 70) return 'partial';
+    return 'non_compliant';
   };
 
   const getSeverityColor = (severity: string) => {
@@ -135,6 +92,20 @@ export function GovernanceDashboardPage() {
         return 'bg-gray-100 text-gray-700';
     }
   };
+
+  const isLoading = complianceLoading || policiesLoading || violationsLoading || approvalsLoading || auditLoading;
+
+  if (complianceError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <p className="text-gray-900 font-medium">Failed to load governance data</p>
+          <p className="text-sm text-gray-500 mt-1">{(complianceError as Error).message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -154,7 +125,16 @@ export function GovernanceDashboardPage() {
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
           </select>
-          <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+          <button
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
+            disabled={runAssessment.isPending || !complianceResults?.length}
+            onClick={() => {
+              if (complianceResults) {
+                complianceResults.forEach((r: AssessmentResult) => runAssessment.mutate(r.framework_id));
+              }
+            }}
+          >
+            {runAssessment.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Run Assessment
           </button>
         </div>
@@ -167,10 +147,13 @@ export function GovernanceDashboardPage() {
             <div className="p-2 bg-green-50 rounded-lg">
               <Shield className="w-5 h-5 text-green-600" />
             </div>
-            <span className="text-xs font-medium text-green-600">+2.3%</span>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold text-gray-900">{complianceOverview.overallScore}%</p>
+            {complianceLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            ) : (
+              <p className="text-3xl font-bold text-gray-900">{overallScore.toFixed(1)}%</p>
+            )}
             <p className="text-sm font-medium text-gray-500">Overall Compliance</p>
           </div>
         </div>
@@ -180,10 +163,14 @@ export function GovernanceDashboardPage() {
             <div className="p-2 bg-blue-50 rounded-lg">
               <FileCheck className="w-5 h-5 text-blue-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">{policyStats.active} active</span>
+            <span className="text-xs font-medium text-gray-500">{policyActive} active</span>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold text-gray-900">{policyStats.total}</p>
+            {policiesLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            ) : (
+              <p className="text-3xl font-bold text-gray-900">{policyTotal}</p>
+            )}
             <p className="text-sm font-medium text-gray-500">Policies</p>
           </div>
         </div>
@@ -193,10 +180,14 @@ export function GovernanceDashboardPage() {
             <div className="p-2 bg-yellow-50 rounded-lg">
               <ClipboardCheck className="w-5 h-5 text-yellow-600" />
             </div>
-            <span className="text-xs font-medium text-yellow-600">{approvalStats.pending} pending</span>
+            <span className="text-xs font-medium text-yellow-600">{pendingCount} pending</span>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold text-gray-900">{approvalStats.approved}</p>
+            {approvalsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            ) : (
+              <p className="text-3xl font-bold text-gray-900">{approvedCount}</p>
+            )}
             <p className="text-sm font-medium text-gray-500">Approvals (30d)</p>
           </div>
         </div>
@@ -206,10 +197,13 @@ export function GovernanceDashboardPage() {
             <div className="p-2 bg-red-50 rounded-lg">
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
-            <span className="text-xs font-medium text-red-600">+{policyStats.violations.thisWeek} this week</span>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold text-gray-900">{policyStats.violations.open}</p>
+            {violationsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            ) : (
+              <p className="text-3xl font-bold text-gray-900">{openViolationCount}</p>
+            )}
             <p className="text-sm font-medium text-gray-500">Open Violations</p>
           </div>
         </div>
@@ -223,40 +217,48 @@ export function GovernanceDashboardPage() {
             View details
           </a>
         </div>
-        <div className="grid grid-cols-4 gap-4">
-          {complianceOverview.frameworks.map((framework) => (
-            <div
-              key={framework.name}
-              className="p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-gray-900">{framework.name}</h3>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${getStatusBadge(
-                    framework.status
-                  )}`}
-                >
-                  {framework.status}
-                </span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className={`text-2xl font-bold ${getComplianceColor(framework.score).split(' ')[0]}`}>
-                    {framework.score}%
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {framework.controls.compliant}/{framework.controls.total} controls
-                  </p>
+        {complianceLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        ) : complianceResults && complianceResults.length > 0 ? (
+          <div className="grid grid-cols-4 gap-4">
+            {complianceResults.map((framework: AssessmentResult) => (
+              <div
+                key={framework.framework_id}
+                className="p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-gray-900">{framework.framework_name}</h3>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${getStatusBadge(
+                      framework.compliance_score
+                    )}`}
+                  >
+                    {getStatusLabel(framework.compliance_score)}
+                  </span>
                 </div>
-                <div className="flex gap-1">
-                  <div className="w-2 h-8 bg-green-200 rounded" style={{ height: `${framework.controls.compliant / framework.controls.total * 32}px` }} />
-                  <div className="w-2 h-8 bg-yellow-200 rounded" style={{ height: `${framework.controls.partial / framework.controls.total * 32}px` }} />
-                  <div className="w-2 h-8 bg-red-200 rounded" style={{ height: `${framework.controls.nonCompliant / framework.controls.total * 32}px` }} />
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className={`text-2xl font-bold ${getComplianceColor(framework.compliance_score).split(' ')[0]}`}>
+                      {framework.compliance_score.toFixed(0)}%
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {framework.compliant}/{framework.total_controls} controls
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-2 bg-green-200 rounded" style={{ height: `${framework.compliant / framework.total_controls * 32}px` }} />
+                    <div className="w-2 bg-yellow-200 rounded" style={{ height: `${framework.partial / framework.total_controls * 32}px` }} />
+                    <div className="w-2 bg-red-200 rounded" style={{ height: `${framework.non_compliant / framework.total_controls * 32}px` }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-8">No compliance frameworks configured.</p>
+        )}
       </div>
 
       {/* Pending Approvals & Recent Violations */}
@@ -269,32 +271,40 @@ export function GovernanceDashboardPage() {
               View all
             </a>
           </div>
-          <div className="space-y-3">
-            {pendingApprovals.map((approval) => (
-              <div
-                key={approval.id}
-                className="p-3 bg-gray-50 rounded-lg border border-gray-100"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-gray-500">{approval.id}</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                        {approval.type}
-                      </span>
+          {pendingApprovalsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : pendingApprovals && pendingApprovals.length > 0 ? (
+            <div className="space-y-3">
+              {pendingApprovals.map((approval: ApprovalRequestWithWorkflow) => (
+                <div
+                  key={approval.request.id}
+                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono text-gray-500">{approval.request.id.slice(0, 8)}</span>
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                          {approval.request.resource_type}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">{approval.workflow_name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {approval.request.requester_id} · {formatRelativeTime(approval.request.created_at)}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-gray-900">{approval.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {approval.requester} · {approval.created}
-                    </p>
+                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
+                      {approval.current_stage_name}
+                    </span>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
-                    {approval.stage}
-                  </span>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">No pending approvals.</p>
+          )}
         </div>
 
         {/* Recent Violations */}
@@ -305,36 +315,44 @@ export function GovernanceDashboardPage() {
               View all
             </a>
           </div>
-          <div className="space-y-3">
-            {recentViolations.map((violation) => (
-              <div
-                key={violation.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100"
-              >
-                <div className="flex items-center gap-3">
-                  {violation.status === 'open' ? (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  ) : (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{violation.policy}</p>
-                    <p className="text-xs text-gray-500">{violation.resource}</p>
+          {recentViolationsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : recentViolations && recentViolations.length > 0 ? (
+            <div className="space-y-3">
+              {recentViolations.map((violation: PolicyViolation) => (
+                <div
+                  key={violation.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    {violation.status === 'open' ? (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{violation.policy_id}</p>
+                      <p className="text-xs text-gray-500">{violation.resource_type}: {violation.resource_id}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${getSeverityColor(
+                        (violation.details?.severity as string) ?? 'medium'
+                      )}`}
+                    >
+                      {(violation.details?.severity as string) ?? 'medium'}
+                    </span>
+                    <span className="text-xs text-gray-400">{formatRelativeTime(violation.created_at)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${getSeverityColor(
-                      violation.severity
-                    )}`}
-                  >
-                    {violation.severity}
-                  </span>
-                  <span className="text-xs text-gray-400">{violation.created}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">No recent violations.</p>
+          )}
         </div>
       </div>
 
@@ -348,35 +366,43 @@ export function GovernanceDashboardPage() {
               View audit log
             </a>
           </div>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">
-                {auditStats.totalEntries.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500">Total Entries</p>
+          {auditLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">{auditStats.todayEntries}</p>
-              <p className="text-xs text-gray-500">Today</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">{auditStats.uniqueActors}</p>
-              <p className="text-xs text-gray-500">Unique Actors</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex flex-wrap gap-1">
-                {auditStats.topActions.map((action) => (
-                  <span
-                    key={action}
-                    className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded"
-                  >
-                    {action}
-                  </span>
-                ))}
+          ) : auditStats ? (
+            <div className="grid grid-cols-4 gap-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-900">
+                  {auditStats.total_entries.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">Total Entries</p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Top Actions</p>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-900">{auditStats.entries_today}</p>
+                <p className="text-xs text-gray-500">Today</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-900">{auditStats.unique_actors}</p>
+                <p className="text-xs text-gray-500">Unique Actors</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex flex-wrap gap-1">
+                  {auditStats.top_actions.map((item) => (
+                    <span
+                      key={item.action}
+                      className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded"
+                    >
+                      {item.action}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Top Actions</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">No audit data available.</p>
+          )}
         </div>
 
         {/* Quick Links */}

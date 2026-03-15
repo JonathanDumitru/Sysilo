@@ -1,0 +1,19 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sysilo.fullname" . }}-frontend
+  labels:
+    {{- include "sysilo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.frontend.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sysilo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+{{- end }}

@@ -23,6 +23,12 @@ import {
   FolderKanban,
   Sparkles,
   Lock,
+  Store,
+  LayoutTemplate,
+  Bot,
+  Package,
+  ShieldCheck,
+  HeartPulse,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { usePlan } from '../../hooks/usePlan';
@@ -61,6 +67,15 @@ const rationalizationNavigation = [
   { name: 'Projects', href: '/rationalization/projects', icon: FolderKanban },
 ];
 
+const platformNavigation = [
+  { name: 'Marketplace', href: '/marketplace', icon: Store },
+  { name: 'Templates', href: '/templates', icon: LayoutTemplate },
+  { name: 'Agent Hub', href: '/agent-hub', icon: Bot },
+  { name: 'Data Products', href: '/data-products', icon: Package },
+  { name: 'Compliance API', href: '/governance/compliance-api', icon: ShieldCheck },
+  { name: 'Immune System', href: '/operations/immune-system', icon: HeartPulse },
+];
+
 const aiNavigation = [
   { name: 'AI Assistant', href: '/ai', icon: Sparkles },
 ];
@@ -77,7 +92,7 @@ function NavItem({ item, locked, onLockedClick }: NavItemProps) {
       <li>
         <button
           onClick={onLockedClick}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-800 hover:text-gray-400 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-white/5 hover:text-gray-400 transition-colors"
         >
           <item.icon className="w-5 h-5" />
           {item.name}
@@ -96,8 +111,8 @@ function NavItem({ item, locked, onLockedClick }: NavItemProps) {
           clsx(
             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
             isActive
-              ? 'bg-primary-600 text-white'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-400'
+              : 'text-gray-300 hover:bg-white/5 hover:text-white'
           )
         }
       >
@@ -118,7 +133,7 @@ interface NavSectionProps {
 function NavSection({ title, items, lockedItems, onLockedClick }: NavSectionProps) {
   return (
     <div className="mb-4">
-      <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <h3 className="px-3 mb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
         {title}
       </h3>
       <ul className="space-y-1">
@@ -175,32 +190,33 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-60 bg-gray-900 text-white flex flex-col">
+    <aside className="w-60 bg-surface-raised/95 backdrop-blur-glass border-r border-surface-border text-white flex flex-col">
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-        <span className="text-xl font-bold">Sysilo</span>
+      <div className="h-16 flex items-center justify-between px-6 border-b border-surface-border">
+        <span className="text-xl font-bold text-primary-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.3)]">Sysilo</span>
         <PlanBadge />
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
-        <NavSection title="Platform" items={mainNavigation} />
+        <NavSection title="Core" items={mainNavigation} />
         <NavSection title="Operations" items={operationsNavigation} />
         <NavSection title="Governance" items={governanceNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
         <NavSection title="Rationalization" items={rationalizationNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
+        <NavSection title="Platform" items={platformNavigation} />
         <NavSection title="AI" items={aiNavigation} lockedItems={lockedItems} onLockedClick={handleLockedClick} />
       </nav>
 
       {/* Settings */}
-      <div className="p-3 border-t border-gray-800">
+      <div className="p-3 border-t border-surface-border">
         <NavLink
           to="/settings"
           className={({ isActive }) =>
             clsx(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               isActive
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-400'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
             )
           }
         >

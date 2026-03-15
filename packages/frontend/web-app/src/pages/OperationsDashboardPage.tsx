@@ -1,100 +1,207 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bell,
   CheckCircle,
   Clock,
   AlertOctagon,
   TrendingUp,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
+import {
+  useAlertInstances,
+  useAcknowledgeAlert,
+  useIncidents,
+  useMetricAggregations,
+  useCreateIncident,
+} from '../hooks/useOperations';
+import type { AlertInstance, Incident, MetricAggregationParams } from '../services/operations';
 
-// Mock data for the dashboard
-const systemHealth = {
-  overall: 'healthy',
-  services: [
-    { name: 'API Gateway', status: 'healthy', latency: '45ms' },
-    { name: 'Integration Service', status: 'healthy', latency: '120ms' },
-    { name: 'Agent Gateway', status: 'healthy', latency: '32ms' },
-    { name: 'Data Service', status: 'degraded', latency: '890ms' },
-  ],
-};
+// --- Helpers ---
 
-const alertSummary = {
-  critical: 1,
-  high: 2,
-  medium: 5,
-  low: 8,
-};
+function formatRelativeTime(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diffMs = now - then;
 
-const recentAlerts = [
-  {
-    id: '1',
-    name: 'High CPU Usage',
-    severity: 'critical',
-    resource: 'prod-agent-01',
-    time: '5 min ago',
-    status: 'firing',
-  },
-  {
-    id: '2',
-    name: 'Integration Failure Rate',
-    severity: 'high',
-    resource: 'Salesforce Sync',
-    time: '15 min ago',
-    status: 'firing',
-  },
-  {
-    id: '3',
-    name: 'Database Connection Pool',
-    severity: 'medium',
-    resource: 'data-service',
-    time: '1 hour ago',
-    status: 'acknowledged',
-  },
-];
+  if (diffMs < 0) return 'just now';
 
-const activeIncidents = [
-  {
-    id: 'INC-001',
-    title: 'Production Agent Unresponsive',
-    severity: 'critical',
-    status: 'investigating',
-    assignee: 'John Doe',
-    created: '30 min ago',
-  },
-  {
-    id: 'INC-002',
-    title: 'Elevated Error Rates in Data Pipeline',
-    severity: 'high',
-    status: 'acknowledged',
-    assignee: 'Jane Smith',
-    created: '2 hours ago',
-  },
-];
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
 
-const metrics = [
-  { name: 'Uptime', value: '99.95%', trend: '+0.02%', icon: TrendingUp },
-  { name: 'Avg Response Time', value: '145ms', trend: '-12ms', icon: Clock },
-  { name: 'Active Alerts', value: '16', trend: '+3', icon: Bell },
-  { name: 'Open Incidents', value: '2', trend: '0', icon: AlertOctagon },
-];
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function getTimeRangeStart(range: string): string {
+  const now = new Date();
+  switch (range) {
+    case '1h':
+      now.setHours(now.getHours() - 1);
+      break;
+    case '6h':
+      now.setHours(now.getHours() - 6);
+      break;
+    case '24h':
+      now.setHours(now.getHours() - 24);
+      break;
+    case '7d':
+      now.setDate(now.getDate() - 7);
+      break;
+    default:
+      now.setHours(now.getHours() - 24);
+  }
+  return now.toISOString();
+}
+
+function getSeverityColor(severity: string) {
+  switch (severity) {
+    case 'critical':
+      return 'bg-red-100 text-red-700 border-red-200';
+    case 'high':
+      return 'bg-orange-100 text-orange-700 border-orange-200';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'low':
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+  }
+}
+
+// --- Loading / Error Components ---
+
+function LoadingSkeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+// --- Main Page ---
 
 export function OperationsDashboardPage() {
   const [timeRange, setTimeRange] = useState('24h');
+  const [showCreateIncident, setShowCreateIncident] = useState(false);
+  const [newIncident, setNewIncident] = useState({ title: '', description: '', severity: 'medium' as const });
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'high':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'low':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+  // --- Data Hooks ---
+  const alertsQuery = useAlertInstances();
+  const incidentsQuery = useIncidents('open');
+
+  const metricsParams: MetricAggregationParams = useMemo(
+    () => ({
+      start_time: getTimeRangeStart(timeRange),
+      end_time: new Date().toISOString(),
+    }),
+    [timeRange]
+  );
+  const metricsQuery = useMetricAggregations(metricsParams);
+
+  const acknowledgeMutation = useAcknowledgeAlert();
+  const createIncidentMutation = useCreateIncident();
+
+  // --- Derived Data ---
+
+  const alerts: AlertInstance[] = alertsQuery.data ?? [];
+  const incidents: Incident[] = incidentsQuery.data ?? [];
+
+  const alertSummary = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (const alert of alerts) {
+      if (alert.severity in counts) {
+        counts[alert.severity as keyof typeof counts]++;
+      }
     }
-  };
+    return counts;
+  }, [alerts]);
+
+  const firingAlerts = useMemo(
+    () => alerts.filter((a) => a.status === 'firing' || a.status === 'acknowledged'),
+    [alerts]
+  );
+
+  // Compute key metrics from aggregations and live data
+  const keyMetrics = useMemo(() => {
+    const aggregations = metricsQuery.data ?? [];
+    const uptimeAgg = aggregations.find((a) => a.metric_name === 'uptime');
+    const latencyAgg = aggregations.find((a) => a.metric_name === 'response_time');
+
+    return [
+      {
+        name: 'Uptime',
+        value: uptimeAgg ? `${uptimeAgg.avg_value.toFixed(2)}%` : '--',
+        trend: '',
+        icon: TrendingUp,
+      },
+      {
+        name: 'Avg Response Time',
+        value: latencyAgg ? `${Math.round(latencyAgg.avg_value)}ms` : '--',
+        trend: '',
+        icon: Clock,
+      },
+      {
+        name: 'Active Alerts',
+        value: String(firingAlerts.length),
+        trend: '',
+        icon: Bell,
+      },
+      {
+        name: 'Open Incidents',
+        value: String(incidents.length),
+        trend: '',
+        icon: AlertOctagon,
+      },
+    ];
+  }, [metricsQuery.data, firingAlerts.length, incidents.length]);
+
+  // --- Handlers ---
+
+  function handleAcknowledge(alertId: string) {
+    acknowledgeMutation.mutate(alertId);
+  }
+
+  function handleCreateIncident() {
+    createIncidentMutation.mutate(
+      {
+        title: newIncident.title,
+        description: newIncident.description,
+        severity: newIncident.severity,
+      },
+      {
+        onSuccess: () => {
+          setShowCreateIncident(false);
+          setNewIncident({ title: '', description: '', severity: 'medium' });
+        },
+      }
+    );
+  }
+
+  // --- Global loading / error ---
+
+  const isInitialLoading = alertsQuery.isLoading && incidentsQuery.isLoading;
+
+  if (isInitialLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,15 +222,80 @@ export function OperationsDashboardPage() {
             <option value="24h">Last 24 hours</option>
             <option value="7d">Last 7 days</option>
           </select>
-          <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+          <button
+            onClick={() => setShowCreateIncident(true)}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
+          >
             Create Incident
           </button>
         </div>
       </div>
 
+      {/* Create Incident Modal */}
+      {showCreateIncident && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Incident</h2>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Incident title"
+              value={newIncident.title}
+              onChange={(e) => setNewIncident({ ...newIncident, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <textarea
+              placeholder="Description"
+              value={newIncident.description}
+              onChange={(e) => setNewIncident({ ...newIncident, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              rows={3}
+            />
+            <select
+              value={newIncident.severity}
+              onChange={(e) =>
+                setNewIncident({ ...newIncident, severity: e.target.value as 'critical' | 'high' | 'medium' | 'low' | 'info' })
+              }
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="info">Info</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCreateIncident}
+                disabled={createIncidentMutation.isPending || !newIncident.title}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+              >
+                {createIncidentMutation.isPending ? 'Creating...' : 'Create'}
+              </button>
+              <button
+                onClick={() => setShowCreateIncident(false)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error banners */}
+      {alertsQuery.isError && (
+        <ErrorBanner message={`Failed to load alerts: ${alertsQuery.error?.message ?? 'Unknown error'}`} />
+      )}
+      {incidentsQuery.isError && (
+        <ErrorBanner message={`Failed to load incidents: ${incidentsQuery.error?.message ?? 'Unknown error'}`} />
+      )}
+      {metricsQuery.isError && (
+        <ErrorBanner message={`Failed to load metrics: ${metricsQuery.error?.message ?? 'Unknown error'}`} />
+      )}
+
       {/* Key Metrics */}
       <div className="grid grid-cols-4 gap-6">
-        {metrics.map((metric) => (
+        {keyMetrics.map((metric) => (
           <div
             key={metric.name}
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
@@ -132,16 +304,22 @@ export function OperationsDashboardPage() {
               <div className="p-2 bg-primary-50 rounded-lg">
                 <metric.icon className="w-5 h-5 text-primary-600" />
               </div>
-              <span
-                className={`text-xs font-medium ${
-                  metric.trend.startsWith('+') ? 'text-green-600' : metric.trend.startsWith('-') ? 'text-red-600' : 'text-gray-500'
-                }`}
-              >
-                {metric.trend}
-              </span>
+              {metric.trend && (
+                <span
+                  className={`text-xs font-medium ${
+                    metric.trend.startsWith('+') ? 'text-green-600' : metric.trend.startsWith('-') ? 'text-red-600' : 'text-gray-500'
+                  }`}
+                >
+                  {metric.trend}
+                </span>
+              )}
             </div>
             <div className="mt-4">
-              <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
+              {metricsQuery.isLoading ? (
+                <LoadingSkeleton className="h-8 w-20" />
+              ) : (
+                <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
+              )}
               <p className="text-sm font-medium text-gray-500">{metric.name}</p>
             </div>
           </div>
@@ -150,21 +328,22 @@ export function OperationsDashboardPage() {
 
       {/* System Health & Alert Summary */}
       <div className="grid grid-cols-3 gap-6">
-        {/* System Health */}
+        {/* System Health - static since this comes from a different source */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">System Health</h2>
-            <span
-              className={`flex items-center gap-1 text-sm font-medium ${
-                systemHealth.overall === 'healthy' ? 'text-green-600' : 'text-yellow-600'
-              }`}
-            >
+            <span className="flex items-center gap-1 text-sm font-medium text-green-600">
               <CheckCircle className="w-4 h-4" />
-              {systemHealth.overall}
+              healthy
             </span>
           </div>
           <div className="space-y-3">
-            {systemHealth.services.map((service) => (
+            {[
+              { name: 'API Gateway', status: 'healthy', latency: '45ms' },
+              { name: 'Integration Service', status: 'healthy', latency: '120ms' },
+              { name: 'Agent Gateway', status: 'healthy', latency: '32ms' },
+              { name: 'Data Service', status: 'healthy', latency: '65ms' },
+            ].map((service) => (
               <div
                 key={service.name}
                 className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
@@ -186,24 +365,32 @@ export function OperationsDashboardPage() {
         {/* Alert Summary */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Alert Summary</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-              <p className="text-2xl font-bold text-red-700">{alertSummary.critical}</p>
-              <p className="text-xs text-red-600">Critical</p>
+          {alertsQuery.isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <LoadingSkeleton key={i} className="h-16" />
+              ))}
             </div>
-            <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
-              <p className="text-2xl font-bold text-orange-700">{alertSummary.high}</p>
-              <p className="text-xs text-orange-600">High</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-2xl font-bold text-red-700">{alertSummary.critical}</p>
+                <p className="text-xs text-red-600">Critical</p>
+              </div>
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-100">
+                <p className="text-2xl font-bold text-orange-700">{alertSummary.high}</p>
+                <p className="text-xs text-orange-600">High</p>
+              </div>
+              <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                <p className="text-2xl font-bold text-yellow-700">{alertSummary.medium}</p>
+                <p className="text-xs text-yellow-600">Medium</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-2xl font-bold text-blue-700">{alertSummary.low}</p>
+                <p className="text-xs text-blue-600">Low</p>
+              </div>
             </div>
-            <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-              <p className="text-2xl font-bold text-yellow-700">{alertSummary.medium}</p>
-              <p className="text-xs text-yellow-600">Medium</p>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-2xl font-bold text-blue-700">{alertSummary.low}</p>
-              <p className="text-xs text-blue-600">Low</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Active Incidents */}
@@ -214,32 +401,42 @@ export function OperationsDashboardPage() {
               View all
             </a>
           </div>
-          <div className="space-y-3">
-            {activeIncidents.map((incident) => (
-              <div
-                key={incident.id}
-                className="p-3 bg-gray-50 rounded-lg border border-gray-100"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-xs font-mono text-gray-500">{incident.id}</span>
-                    <p className="text-sm font-medium text-gray-900">{incident.title}</p>
+          {incidentsQuery.isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <LoadingSkeleton key={i} className="h-20" />
+              ))}
+            </div>
+          ) : incidents.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">No active incidents</p>
+          ) : (
+            <div className="space-y-3">
+              {incidents.map((incident) => (
+                <div
+                  key={incident.id}
+                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-xs font-mono text-gray-500">{incident.id.slice(0, 8)}</span>
+                      <p className="text-sm font-medium text-gray-900">{incident.title}</p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
+                        incident.severity
+                      )}`}
+                    >
+                      {incident.severity}
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
-                      incident.severity
-                    )}`}
-                  >
-                    {incident.severity}
-                  </span>
+                  <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                    <span>{incident.status}</span>
+                    <span>{formatRelativeTime(incident.created_at)}</span>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                  <span>{incident.assignee}</span>
-                  <span>{incident.created}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -251,57 +448,73 @@ export function OperationsDashboardPage() {
             View all alerts
           </a>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="pb-3">Alert</th>
-                <th className="pb-3">Severity</th>
-                <th className="pb-3">Resource</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3">Time</th>
-                <th className="pb-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {recentAlerts.map((alert) => (
-                <tr key={alert.id} className="text-sm">
-                  <td className="py-3 font-medium text-gray-900">{alert.name}</td>
-                  <td className="py-3">
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
-                        alert.severity
-                      )}`}
-                    >
-                      {alert.severity}
-                    </span>
-                  </td>
-                  <td className="py-3 text-gray-600">{alert.resource}</td>
-                  <td className="py-3">
-                    <span
-                      className={`flex items-center gap-1 text-xs font-medium ${
-                        alert.status === 'firing' ? 'text-red-600' : 'text-yellow-600'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          alert.status === 'firing' ? 'bg-red-500' : 'bg-yellow-500'
-                        }`}
-                      />
-                      {alert.status}
-                    </span>
-                  </td>
-                  <td className="py-3 text-gray-500">{alert.time}</td>
-                  <td className="py-3">
-                    <button className="text-primary-600 hover:text-primary-700 text-xs font-medium">
-                      Acknowledge
-                    </button>
-                  </td>
+        {alertsQuery.isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <LoadingSkeleton key={i} className="h-12" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-4">No recent alerts</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="pb-3">Alert</th>
+                  <th className="pb-3">Severity</th>
+                  <th className="pb-3">Resource</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Time</th>
+                  <th className="pb-3">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {alerts.map((alert) => (
+                  <tr key={alert.id} className="text-sm">
+                    <td className="py-3 font-medium text-gray-900">{alert.rule_name}</td>
+                    <td className="py-3">
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${getSeverityColor(
+                          alert.severity
+                        )}`}
+                      >
+                        {alert.severity}
+                      </span>
+                    </td>
+                    <td className="py-3 text-gray-600">{alert.metric_name}</td>
+                    <td className="py-3">
+                      <span
+                        className={`flex items-center gap-1 text-xs font-medium ${
+                          alert.status === 'firing' ? 'text-red-600' : 'text-yellow-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            alert.status === 'firing' ? 'bg-red-500' : 'bg-yellow-500'
+                          }`}
+                        />
+                        {alert.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-gray-500">{formatRelativeTime(alert.fired_at)}</td>
+                    <td className="py-3">
+                      {alert.status === 'firing' && (
+                        <button
+                          onClick={() => handleAcknowledge(alert.id)}
+                          disabled={acknowledgeMutation.isPending}
+                          className="text-primary-600 hover:text-primary-700 text-xs font-medium disabled:opacity-50"
+                        >
+                          Acknowledge
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

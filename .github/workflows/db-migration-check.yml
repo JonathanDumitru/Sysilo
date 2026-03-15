@@ -1,0 +1,152 @@
+name: DB Migration Check
+
+on:
+  pull_request:
+    paths:
+      - "schemas/**"
+
+jobs:
+  validate-postgres-migrations:
+    name: Validate PostgreSQL Migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sysilo
+          POSTGRES_PASSWORD: sysilo_test
+          POSTGRES_DB: sysilo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U sysilo"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U sysilo; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run all migration scripts in order
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: sysilo
+          PGPASSWORD: sysilo_test
+          PGDATABASE: sysilo
+        run: |
+          echo "Running PostgreSQL migrations..."
+          for migration in $(ls schemas/postgres/*.sql | sort); do
+            echo "Applying: ${migration}"
+            psql -v ON_ERROR_STOP=1 -f "${migration}"
+            if [ $? -ne 0 ]; then
+              echo "::error::Migration failed: ${migration}"
+              exit 1
+            fi
+            echo "  OK"
+          done
+          echo "All PostgreSQL migrations applied successfully."
+
+      - name: Verify schema is valid
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: sysilo
+          PGPASSWORD: sysilo_test
+          PGDATABASE: sysilo
+        run: |
+          echo "Verifying schema..."
+
+          # List all tables
+          echo "=== Tables ==="
+          psql -c "\dt" | tee tables.txt
+
+          # Verify tables were created
+          TABLE_COUNT=$(psql -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';")
+          TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d ' ')
+          echo "Total tables created: ${TABLE_COUNT}"
+
+          if [ "$TABLE_COUNT" -eq 0 ]; then
+            echo "::error::No tables found after running migrations."
+            exit 1
+          fi
+
+          # Check for any invalid constraints
+          echo "=== Foreign Key Constraints ==="
+          psql -c "
+            SELECT
+              tc.constraint_name,
+              tc.table_name,
+              kcu.column_name,
+              ccu.table_name AS foreign_table_name,
+              ccu.column_name AS foreign_column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+              ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage AS ccu
+              ON ccu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+            ORDER BY tc.table_name;
+          "
+
+          # Verify indexes
+          echo "=== Indexes ==="
+          psql -c "
+            SELECT indexname, tablename
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+            ORDER BY tablename, indexname;
+          "
+
+          echo "Schema verification complete."
+
+  check-migration-naming:
+    name: Check Migration File Naming
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate migration file naming convention
+        run: |
+          echo "Checking migration file naming conventions..."
+          errors=0
+
+          for file in schemas/postgres/*.sql; do
+            filename=$(basename "$file")
+            # Expect format: NNN_description.sql
+            if ! echo "$filename" | grep -qE '^[0-9]{3}_[a-z_]+\.sql$'; then
+              echo "::warning::File '${filename}' does not follow naming convention: NNN_description.sql"
+              errors=$((errors + 1))
+            fi
+          done
+
+          if [ $errors -gt 0 ]; then
+            echo "::warning::${errors} file(s) do not follow the naming convention."
+          else
+            echo "All migration files follow the naming convention."
+          fi
+
+      - name: Check for gaps in migration sequence
+        run: |
+          echo "Checking for sequence gaps..."
+          prev_num=0
+          for file in $(ls schemas/postgres/*.sql | sort); do
+            filename=$(basename "$file")
+            num=$(echo "$filename" | grep -oE '^[0-9]+' | sed 's/^0*//')
+            if [ -z "$num" ]; then
+              num=0
+            fi
+            if [ $prev_num -ne 0 ] && [ $((num - prev_num)) -gt 1 ]; then
+              echo "::notice::Gap in migration sequence between ${prev_num} and ${num}"
+            fi
+            prev_num=$num
+          done
+          echo "Sequence check complete."

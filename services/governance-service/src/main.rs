@@ -15,6 +15,8 @@ mod api;
 mod approvals;
 mod audit;
 mod compliance;
+mod compliance_api;
+mod federated;
 mod kafka;
 mod policies;
 mod standards;
@@ -22,6 +24,9 @@ mod standards;
 use crate::approvals::ApprovalsService;
 use crate::audit::AuditService;
 use crate::compliance::ComplianceService;
+use crate::compliance_api::ComplianceApiService;
+use crate::compliance_api::api as compliance_api_handlers;
+use crate::federated::FederatedGovernanceService;
 use crate::kafka::{GovernanceEventProducer, KafkaConfig};
 use crate::policies::PoliciesService;
 use crate::standards::StandardsService;
@@ -33,6 +38,8 @@ pub struct AppState {
     pub approvals: ApprovalsService,
     pub audit: AuditService,
     pub compliance: ComplianceService,
+    pub compliance_api: Option<ComplianceApiService>,
+    pub federated: FederatedGovernanceService,
     pub events: Option<GovernanceEventProducer>,
 }
 
@@ -68,6 +75,19 @@ async fn main() -> anyhow::Result<()> {
     let approvals = ApprovalsService::new(&database_url).await?;
     let audit = AuditService::new(&database_url).await?;
     let compliance = ComplianceService::new(&database_url).await?;
+    let federated = FederatedGovernanceService::new(&database_url).await?;
+
+    // Initialize Compliance-as-a-Product API service
+    let compliance_api = match ComplianceApiService::new(&database_url).await {
+        Ok(svc) => {
+            info!("Compliance API service initialized");
+            Some(svc)
+        }
+        Err(e) => {
+            tracing::warn!("Compliance API service not available: {}", e);
+            None
+        }
+    };
 
     let state = Arc::new(AppState {
         policies,
@@ -75,6 +95,8 @@ async fn main() -> anyhow::Result<()> {
         approvals,
         audit,
         compliance,
+        compliance_api,
+        federated,
         events,
     });
 
@@ -115,6 +137,36 @@ async fn main() -> anyhow::Result<()> {
         .route("/compliance/status", get(api::get_compliance_status))
         .route("/compliance/assess", post(api::run_assessment))
         .route("/compliance/report/:framework", get(api::generate_report))
+        // Federated Governance — Domain endpoints
+        .route("/domains", post(api::create_domain))
+        .route("/domains", get(api::list_domains))
+        .route("/domains/hierarchy", get(api::get_domain_hierarchy))
+        .route("/domains/:id", get(api::get_domain))
+        .route("/domains/:id", put(api::update_domain))
+        .route("/domains/:id", delete(api::delete_domain))
+        // Federated Governance — Domain Policy endpoints
+        .route("/domains/:id/policies", post(api::create_domain_policy))
+        .route("/domains/:id/policies", get(api::list_domain_policies))
+        .route("/domains/policies/:id", put(api::update_domain_policy))
+        .route("/domains/policies/:id", delete(api::delete_domain_policy))
+        // Federated Governance — Inheritance & Evaluation
+        .route("/governance/inheritance", get(api::get_inheritance_chain))
+        .route("/governance/evaluate-federated", post(api::evaluate_federated))
+        // Federated Governance — Health Scores
+        .route("/governance/health", get(api::get_all_health_scores))
+        .route("/governance/health/:domain_id", get(api::get_domain_health))
+        .route("/governance/health/:domain_id/trends", get(api::get_health_trends))
+        // Compliance-as-a-Product — Governance API
+        .route("/governance/api/evaluate", post(compliance_api_handlers::evaluate_policy))
+        .route("/governance/api/scores", get(compliance_api_handlers::get_compliance_scores))
+        .route("/governance/api/scores/calculate", post(compliance_api_handlers::calculate_score))
+        .route("/governance/api/reports", get(compliance_api_handlers::list_reports))
+        .route("/governance/api/reports/generate", post(compliance_api_handlers::generate_report))
+        .route("/governance/api/decisions", get(compliance_api_handlers::get_decision_history))
+        .route("/governance/api/decisions/analytics", get(compliance_api_handlers::get_decision_analytics))
+        .route("/governance/api/regulatory-changes", get(compliance_api_handlers::list_regulatory_changes))
+        .route("/governance/api/regulatory-changes", post(compliance_api_handlers::record_regulatory_change))
+        .route("/governance/api/regulatory-changes/:id/approve", post(compliance_api_handlers::approve_regulatory_change))
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

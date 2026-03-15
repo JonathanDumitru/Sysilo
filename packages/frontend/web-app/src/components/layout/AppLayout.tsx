@@ -5,7 +5,7 @@ import { TrialBanner } from '../billing/TrialBanner';
 
 export function AppLayout() {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-surface-base">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TrialBanner />

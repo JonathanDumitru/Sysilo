@@ -36,8 +36,19 @@ import { PlaybooksPage } from './pages/PlaybooksPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 // AI Components
 import { AIAssistButton } from './components/ai';
+// Command Palette & Shortcuts
+import { CommandPalette } from './components/CommandPalette';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { GlobalShortcuts } from './components/GlobalShortcuts';
 // Billing
 import { PricingPage } from './pages/PricingPage';
+// Platform Expansion Layers
+import { MarketplacePage } from './pages/MarketplacePage';
+import { IndustryTemplatesPage } from './pages/IndustryTemplatesPage';
+import { AgentOrchestrationPage } from './pages/AgentOrchestrationPage';
+import { DataProductsPage } from './pages/DataProductsPage';
+import { ComplianceApiPage } from './pages/ComplianceApiPage';
+import { ImmuneSystemPage } from './pages/ImmuneSystemPage';
 
 function App() {
   useEffect(() => {
@@ -100,9 +111,20 @@ function App() {
           <Route path="rationalization/playbooks" element={<PlaybooksPage />} />
           <Route path="rationalization/projects" element={<ProjectsPage />} />
           <Route path="pricing" element={<PricingPage />} />
+          {/* Platform Expansion */}
+          <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="templates" element={<IndustryTemplatesPage />} />
+          <Route path="agent-hub" element={<AgentOrchestrationPage />} />
+          <Route path="data-products" element={<DataProductsPage />} />
+          <Route path="governance/compliance-api" element={<ComplianceApiPage />} />
+          <Route path="operations/immune-system" element={<ImmuneSystemPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
+      {/* Global Command Palette & Shortcuts */}
+      <CommandPalette />
+      <KeyboardShortcutsHelp />
+      <GlobalShortcuts />
       {/* Global AI Assistant Button */}
       <AIAssistButton context="general" />
     </>

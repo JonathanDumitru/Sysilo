@@ -2,34 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
   --sidebar-width: 240px;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-surface-base text-gray-200 font-sans antialiased;
 }
 
-/* React Flow customizations */
+/* Glass panel utility */
+@layer components {
+  .glass-panel {
+    @apply bg-surface-raised/80 backdrop-blur-glass border border-surface-border rounded-xl shadow-glass;
+  }
+
+  .glass-panel-strong {
+    @apply bg-surface-overlay/90 backdrop-blur-glass border border-surface-border-strong rounded-xl shadow-glass shadow-glass-inset;
+  }
+
+  .glass-card {
+    @apply bg-surface-raised/60 backdrop-blur-glass border border-surface-border rounded-lg hover:border-surface-border-strong transition-all duration-200;
+  }
+
+  .glass-input {
+    @apply bg-surface-base/50 border border-surface-border rounded-lg px-3 py-2 text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none transition-all;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-healthy { @apply bg-status-healthy shadow-[0_0_6px_rgba(63,185,80,0.5)]; }
+  .status-dot-warning { @apply bg-status-warning shadow-[0_0_6px_rgba(210,153,34,0.5)]; }
+  .status-dot-critical { @apply bg-status-critical shadow-[0_0_6px_rgba(248,81,73,0.5)] animate-pulse; }
+
+  .glow-border {
+    @apply border border-primary-500/30 shadow-glow;
+  }
+}
+
+/* React Flow dark mode overrides */
 .react-flow__node {
-  @apply shadow-md rounded-lg;
+  @apply shadow-glass rounded-lg;
 }
 
 .react-flow__node.selected {
-  @apply ring-2 ring-primary-500;
+  @apply ring-2 ring-primary-400 shadow-glow;
 }
 
 .react-flow__edge-path {
-  @apply stroke-gray-400;
+  @apply stroke-gray-600;
   stroke-width: 2;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  @apply stroke-primary-500;
+  @apply stroke-primary-400;
 }
 
 .react-flow__handle {
-  @apply w-3 h-3 bg-gray-400 border-2 border-white;
+  @apply w-3 h-3 bg-gray-600 border-2 border-surface-raised;
 }
 
 .react-flow__handle-left {
@@ -38,4 +71,43 @@ body {
 
 .react-flow__handle-right {
   @apply right-[-6px];
+}
+
+.react-flow__background {
+  background-color: #0D1117 !important;
+}
+
+.react-flow__minimap {
+  @apply bg-surface-raised/80 backdrop-blur-glass border border-surface-border rounded-lg;
+}
+
+/* Slide-in animation for drawers */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Topology graph legend dot colors */
+.legend-dot-green { @apply bg-status-healthy; }
+.legend-dot-amber { @apply bg-status-warning; }
+.legend-dot-red { @apply bg-status-critical; }
+.legend-dot-blue { @apply bg-status-info; }
+.legend-dot-gray { @apply bg-gray-500; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-1.5;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-700 rounded-full hover:bg-gray-600;
+}
+
+/* Selection */
+::selection {
+  @apply bg-primary-500/30 text-white;
 }

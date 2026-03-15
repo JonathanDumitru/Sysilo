@@ -1,0 +1,19 @@
+{{- if .Values.integrationService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sysilo.fullname" . }}-integration-service
+  labels:
+    {{- include "sysilo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: integration-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.integrationService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sysilo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: integration-service
+{{- end }}

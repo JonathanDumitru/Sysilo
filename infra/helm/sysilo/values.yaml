@@ -1,0 +1,292 @@
+# =============================================================================
+# Sysilo Helm Chart - Default Values
+# =============================================================================
+
+global:
+  namespace: sysilo
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+  tenantIsolation:
+    enabled: true
+    mode: "namespace"  # namespace or row-level
+
+# =============================================================================
+# Services
+# =============================================================================
+
+apiGateway:
+  enabled: true
+  image: sysilo/api-gateway
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  port: 8080
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8080"
+  serviceAccount:
+    create: true
+    name: ""
+
+agentGateway:
+  enabled: true
+  image: sysilo/agent-gateway
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  port: 8081
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8081"
+
+integrationService:
+  enabled: true
+  image: sysilo/integration-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8082
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8082"
+
+dataService:
+  enabled: true
+  image: sysilo/data-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8083
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8083"
+
+assetService:
+  enabled: true
+  image: sysilo/asset-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8084
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8084"
+
+opsService:
+  enabled: true
+  image: sysilo/ops-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8085
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8085"
+
+governanceService:
+  enabled: true
+  image: sysilo/governance-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8086
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8086"
+
+rationalizationService:
+  enabled: true
+  image: sysilo/rationalization-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  port: 8087
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8087"
+
+aiService:
+  enabled: true
+  image: sysilo/ai-service
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  port: 8088
+  env:
+    RUST_LOG: "info"
+    LISTEN_ADDR: "0.0.0.0:8088"
+
+frontend:
+  enabled: true
+  image: sysilo/frontend
+  tag: "0.1.0"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  port: 3000
+  env:
+    NODE_ENV: "production"
+
+# =============================================================================
+# Infrastructure
+# =============================================================================
+
+postgresql:
+  # Set external to use an existing PostgreSQL instance
+  external:
+    enabled: false
+    host: ""
+    port: 5432
+    database: sysilo
+    username: sysilo
+    existingSecret: ""
+    secretKey: "postgresql-password"
+  # Subchart values (when external.enabled is false)
+  enabled: true
+  auth:
+    username: sysilo
+    password: ""
+    database: sysilo
+  primary:
+    persistence:
+      size: 20Gi
+
+neo4j:
+  external:
+    enabled: false
+    host: ""
+    port: 7687
+    username: neo4j
+    existingSecret: ""
+    secretKey: "neo4j-password"
+  enabled: true
+  auth:
+    username: neo4j
+    password: ""
+  persistence:
+    size: 10Gi
+
+redis:
+  external:
+    enabled: false
+    host: ""
+    port: 6379
+    existingSecret: ""
+    secretKey: "redis-password"
+  enabled: true
+  auth:
+    password: ""
+  master:
+    persistence:
+      size: 5Gi
+
+kafka:
+  external:
+    enabled: false
+    brokers: ""
+    existingSecret: ""
+    secretKey: "kafka-password"
+  enabled: true
+  persistence:
+    size: 20Gi
+  replicaCount: 3
+
+minio:
+  external:
+    enabled: false
+    endpoint: ""
+    accessKey: ""
+    existingSecret: ""
+    secretKey: "minio-secret-key"
+  enabled: true
+  auth:
+    rootUser: sysilo
+    rootPassword: ""
+  persistence:
+    size: 50Gi
+
+# =============================================================================
+# Ingress
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  host: sysilo.local
+  tls:
+    enabled: false
+    secretName: sysilo-tls
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+
+monitoring:
+  prometheus:
+    enabled: true
+    scrape: true
+    port: 9090
+    path: /metrics

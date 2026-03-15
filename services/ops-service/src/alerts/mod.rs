@@ -216,6 +216,24 @@ impl AlertsService {
     // Alert Rules
     // ========================================================================
 
+    /// List all enabled alert rules across all tenants (for the evaluator)
+    pub async fn list_all_enabled_rules(&self) -> Result<Vec<AlertRule>> {
+        let rules = sqlx::query_as::<_, AlertRule>(
+            r#"
+            SELECT id, tenant_id, name, description, metric_name, condition,
+                   threshold, duration_seconds, severity, channels, labels,
+                   enabled, created_at, updated_at
+            FROM alert_rules
+            WHERE enabled = true
+            ORDER BY tenant_id, name
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rules)
+    }
+
     /// List alert rules
     pub async fn list_rules(
         &self,

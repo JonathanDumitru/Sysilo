@@ -1,0 +1,19 @@
+{{- if .Values.apiGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sysilo.fullname" . }}-api-gateway
+  labels:
+    {{- include "sysilo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.apiGateway.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sysilo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+{{- end }}

@@ -14,6 +14,11 @@ use crate::standards::{CreateStandardRequest, UpdateStandardRequest};
 use crate::policies::{CreatePolicyRequest, UpdatePolicyRequest, EvaluatePoliciesRequest};
 use crate::approvals::{CreateWorkflowRequest, UpdateWorkflowRequest, CreateApprovalRequestInput, DecideRequest};
 use crate::audit::AuditQueryParams;
+use crate::federated::{
+    CreateDomainRequest, UpdateDomainRequest,
+    CreateDomainPolicyRequest, UpdateDomainPolicyRequest,
+    FederatedEvaluateRequest, InheritanceQueryParams, HealthTrendsParams,
+};
 
 // ============================================================================
 // Common Types
@@ -691,6 +696,270 @@ pub async fn generate_report(
 
     match state.compliance.generate_report(tenant_id, framework.id, start_time, end_time).await {
         Ok(report) => (StatusCode::OK, Json(ApiResponse::success(report))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Federated Governance Handlers — Domains
+// ============================================================================
+
+pub async fn create_domain(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<CreateDomainRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.create_domain(tenant_id, req).await {
+        Ok(domain) => (StatusCode::CREATED, Json(ApiResponse::success(domain))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn list_domains(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.list_domains(tenant_id).await {
+        Ok(domains) => (StatusCode::OK, Json(ApiResponse::success(domains))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn get_domain(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.get_domain(tenant_id, id).await {
+        Ok(Some(domain)) => (StatusCode::OK, Json(ApiResponse::success(domain))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Domain not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn update_domain(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateDomainRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.update_domain(tenant_id, id, req).await {
+        Ok(Some(domain)) => (StatusCode::OK, Json(ApiResponse::success(domain))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Domain not found"))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn delete_domain(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.delete_domain(tenant_id, id).await {
+        Ok(true) => (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({"deleted": true})))).into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Domain not found"))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn get_domain_hierarchy(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.get_domain_hierarchy(tenant_id).await {
+        Ok(tree) => (StatusCode::OK, Json(ApiResponse::success(tree))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Federated Governance Handlers — Domain Policies
+// ============================================================================
+
+pub async fn create_domain_policy(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(domain_id): Path<Uuid>,
+    Json(req): Json<CreateDomainPolicyRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.create_domain_policy(tenant_id, domain_id, req).await {
+        Ok(policy) => (StatusCode::CREATED, Json(ApiResponse::success(policy))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn list_domain_policies(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(domain_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.list_domain_policies(tenant_id, domain_id).await {
+        Ok(policies) => (StatusCode::OK, Json(ApiResponse::success(policies))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn update_domain_policy(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(policy_id): Path<Uuid>,
+    Json(req): Json<UpdateDomainPolicyRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.update_domain_policy(tenant_id, policy_id, req).await {
+        Ok(Some(policy)) => (StatusCode::OK, Json(ApiResponse::success(policy))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Domain policy not found"))).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn delete_domain_policy(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(policy_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.delete_domain_policy(tenant_id, policy_id).await {
+        Ok(true) => (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({"deleted": true})))).into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Domain policy not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Federated Governance Handlers — Inheritance & Evaluation
+// ============================================================================
+
+pub async fn get_inheritance_chain(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Query(params): Query<InheritanceQueryParams>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.get_inheritance_chain(tenant_id, &params.resource_type, &params.resource_id).await {
+        Ok(chain) => (StatusCode::OK, Json(ApiResponse::success(chain))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn evaluate_federated(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<FederatedEvaluateRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.evaluate_with_inheritance(tenant_id, req).await {
+        Ok(result) => (StatusCode::OK, Json(ApiResponse::success(result))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Federated Governance Handlers — Health Scores
+// ============================================================================
+
+pub async fn get_all_health_scores(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.get_health_scores(tenant_id).await {
+        Ok(scores) => (StatusCode::OK, Json(ApiResponse::success(scores))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn get_domain_health(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(domain_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.federated.calculate_health_score(tenant_id, domain_id).await {
+        Ok(score) => (StatusCode::OK, Json(ApiResponse::success(score))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+pub async fn get_health_trends(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(domain_id): Path<Uuid>,
+    Query(params): Query<HealthTrendsParams>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    let days = params.days.unwrap_or(30);
+
+    match state.federated.get_health_trends(tenant_id, domain_id, days).await {
+        Ok(trends) => (StatusCode::OK, Json(ApiResponse::success(trends))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
     }
 }

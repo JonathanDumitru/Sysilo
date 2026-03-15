@@ -14,6 +14,10 @@ use crate::metrics::{MetricInput, TimeBucket};
 use crate::alerts::{CreateAlertRuleRequest, UpdateAlertRuleRequest};
 use crate::incidents::{CreateIncidentRequest, UpdateIncidentRequest, AddIncidentEventRequest};
 use crate::notifications::{CreateChannelRequest, UpdateChannelRequest};
+use crate::digital_twin::{
+    CreateTwinRequest, UpdateRunRequest, SimulationParams,
+    AnomalyFilters, PredictionFilters,
+};
 
 // ============================================================================
 // Common Types
@@ -603,6 +607,171 @@ pub async fn test_channel(
     match state.notifications.test_channel(tenant_id, id).await {
         Ok(true) => (StatusCode::OK, Json(ApiResponse::success(serde_json::json!({"sent": true})))).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Channel not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+// ============================================================================
+// Digital Twin Handlers
+// ============================================================================
+
+/// List all digital twins for the tenant
+pub async fn list_twins(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.list_twins(tenant_id).await {
+        Ok(twins) => (StatusCode::OK, Json(ApiResponse::success(twins))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Create a new digital twin for an integration
+pub async fn create_twin(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<CreateTwinRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.create_twin(tenant_id, req).await {
+        Ok(twin) => (StatusCode::CREATED, Json(ApiResponse::success(twin))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Get a specific digital twin by integration_id
+pub async fn get_twin(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(integration_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.get_twin(tenant_id, integration_id).await {
+        Ok(Some(twin)) => (StatusCode::OK, Json(ApiResponse::success(twin))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Twin not found"))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Trigger baseline learning for a twin
+pub async fn learn_twin_baseline(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(integration_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    // First get the twin to find its ID
+    let twin = match state.digital_twins.get_twin(tenant_id, integration_id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => return (StatusCode::NOT_FOUND, Json(ApiResponse::<()>::error("Twin not found"))).into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    };
+
+    match state.digital_twins.learn_baseline(tenant_id, twin.id).await {
+        Ok(updated) => (StatusCode::OK, Json(ApiResponse::success(updated))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Update a twin with latest run data
+pub async fn update_twin_state(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(integration_id): Path<Uuid>,
+    Json(req): Json<UpdateRunRequest>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.update_state(tenant_id, integration_id, req).await {
+        Ok(twin) => (StatusCode::OK, Json(ApiResponse::success(twin))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Run a what-if simulation on a twin
+pub async fn simulate_twin_change(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Path(integration_id): Path<Uuid>,
+    Json(params): Json<SimulationParams>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.simulate_change(tenant_id, integration_id, params).await {
+        Ok(result) => (StatusCode::OK, Json(ApiResponse::success(result))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// List anomalies across all twins for the tenant
+pub async fn list_twin_anomalies(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Query(filters): Query<AnomalyFilters>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.get_anomalies(tenant_id, filters).await {
+        Ok(anomalies) => (StatusCode::OK, Json(ApiResponse::success(anomalies))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// List predictions across all twins for the tenant
+pub async fn list_twin_predictions(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Query(filters): Query<PredictionFilters>,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.get_predictions(tenant_id, filters).await {
+        Ok(predictions) => (StatusCode::OK, Json(ApiResponse::success(predictions))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
+    }
+}
+
+/// Get aggregate fleet health score across all twins
+pub async fn fleet_health(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    let tenant_id = match get_tenant_id(&headers) {
+        Ok(id) => id,
+        Err(status) => return (status, Json(ApiResponse::<()>::error("Unauthorized"))).into_response(),
+    };
+
+    match state.digital_twins.get_fleet_health(tenant_id).await {
+        Ok(health) => (StatusCode::OK, Json(ApiResponse::success(health))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::<()>::error(e.to_string()))).into_response(),
     }
 }
