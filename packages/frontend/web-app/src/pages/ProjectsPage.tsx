@@ -432,7 +432,7 @@ export function ProjectsPage() {
                   <div className="space-y-3">
                     {selectedProject.recentActivity.map((activity) => (
                       <div key={activity.id} className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-primary-900/300 mt-1.5" />
+                        <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5" />
                         <div>
                           <p className="text-sm text-white">{activity.action}</p>
                           <p className="text-xs text-gray-500">
@@ -476,7 +476,7 @@ export function ProjectsPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-gray-500">
-              <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-600" />
               <p>Select a project to view details</p>
             </div>
           )}
