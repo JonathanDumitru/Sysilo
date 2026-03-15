@@ -8,7 +8,7 @@ Describe how the SaaS control plane and customer agents are deployed.
 
 ```mermaid
 flowchart LR
-  subgraph Cloud[Sysilo Cloud]
+  subgraph Cloud[Sysilo© Cloud]
     CP[Control Plane]
     DB[(Primary DB)]
     Bus[Event Bus]

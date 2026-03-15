@@ -1,11 +1,11 @@
-# Sysilo Codebase Assessment
+# Sysilo© Codebase Assessment
 
 **Date:** 2026-03-14
 **Overall Status:** Moderately mature MVP — core workflows implemented, analytics/reporting dashboards scaffolded
 
 ## Platform Summary
 
-Sysilo is an enterprise integration and data unification platform with a SaaS control plane and customer-deployed agents. The codebase spans ~40,000+ lines across Rust (42.6%), TypeScript (33.6%), Go (17.8%), Python (3.4%), and PLpgSQL (1.7%).
+Sysilo© is an enterprise integration and data unification platform with a SaaS control plane and customer-deployed agents. The codebase spans ~40,000+ lines across Rust (42.6%), TypeScript (33.6%), Go (17.8%), Python (3.4%), and PLpgSQL (1.7%).
 
 ---
 

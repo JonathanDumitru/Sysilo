@@ -1,4 +1,4 @@
-# Sysilo Platform Design
+# Sysilo© Platform Design
 
 **Date:** 2026-02-03
 **Status:** Draft
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Sysilo is an enterprise integration and data unification platform designed for IT/Architecture teams managing complex, hybrid technology landscapes. It addresses four interconnected pain points:
+Sysilo© is an enterprise integration and data unification platform designed for IT/Architecture teams managing complex, hybrid technology landscapes. It addresses four interconnected pain points:
 
 1. **Integration orchestration** — Brittle, ad-hoc integrations across SaaS, on-prem, and legacy systems
 2. **Data unification** — Siloed data blocking AI/analytics initiatives
