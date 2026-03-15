@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sysilo is an enterprise integration and data unification platform for complex hybrid environments.
+Sysilo© is an enterprise integration and data unification platform for complex hybrid environments.
 It combines a SaaS control plane with lightweight customer-deployed agents to connect systems
 that cannot be reached directly. The platform focuses on integration orchestration, data
 unification, application rationalization, and landscape visibility.
@@ -21,10 +21,10 @@ flowchart LR
   subgraph CustomerEnv[Customer Environment]
     SysA[Source Systems]
     SysB[Target Systems]
-    Agent[Sysilo Agents]
+    Agent[Sysilo© Agents]
   end
 
-  subgraph ControlPlane[Sysilo Control Plane]
+  subgraph ControlPlane[Sysilo© Control Plane]
     Studio[Integration Studio]
     Hub[Data Hub]
     Registry[Asset Registry]

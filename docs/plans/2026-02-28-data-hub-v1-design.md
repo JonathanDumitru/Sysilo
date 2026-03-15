@@ -6,7 +6,7 @@
 
 ## Overview
 
-Data Hub is the data unification layer for Sysilo. It enables users to define canonical data models (e.g., Customer, Product), map fields from multiple connected source systems to those models, and view unified records with full source provenance.
+Data Hub is the data unification layer for Sysilo©. It enables users to define canonical data models (e.g., Customer, Product), map fields from multiple connected source systems to those models, and view unified records with full source provenance.
 
 **Core Value:** Integrations move data around, but without a unified destination the platform feels incomplete. Data Hub closes that gap.
 

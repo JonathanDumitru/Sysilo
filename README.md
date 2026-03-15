@@ -18,10 +18,10 @@ flowchart LR
   subgraph CustomerEnv[Customer Environment]
     SysA[Source Systems]
     SysB[Target Systems]
-    Agent[Sysilo Agents]
+    Agent[Sysilo© Agents]
   end
 
-  subgraph ControlPlane[Sysilo Control Plane]
+  subgraph ControlPlane[Sysilo© Control Plane]
     Studio[Integration Studio]
     Hub[Data Hub]
     Registry[Asset Registry]
@@ -278,7 +278,7 @@ curl -X POST http://localhost:8082/dev/mock-discovery \
 
 ### Real discovery
 
-POST `/discovery/run` dispatches a discovery task to Kafka. This path requires Kafka to be running and a Sysilo Agent to be connected and registered.
+POST `/discovery/run` dispatches a discovery task to Kafka. This path requires Kafka to be running and a Sysilo© Agent to be connected and registered.
 
 ## Control Plane Service Architecture
 
@@ -308,7 +308,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  subgraph Agent[Sysilo Agent]
+  subgraph Agent[Sysilo© Agent]
     Tunnel[Secure Tunnel]
     Executor[Task Executor]
     Cache[Local Cache]
@@ -346,7 +346,7 @@ Key agent properties:
 - **Agent** -- Lightweight runtime deployed in customer environments to execute tasks and discovery.
 - **Asset** -- Any system, API, data entity, or integration registered in the platform.
 - **Canonical model** -- Standardized entity schema used by the Data Hub for unified data shapes.
-- **Control plane** -- Sysilo-hosted services that orchestrate integrations and governance.
+- **Control plane** -- Sysilo©-hosted services that orchestrate integrations and governance.
 - **Integration** -- A defined workflow that moves or transforms data between systems.
 - **Rationalization** -- The process of evaluating and consolidating redundant applications.
 

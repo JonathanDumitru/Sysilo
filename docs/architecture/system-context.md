@@ -2,7 +2,7 @@
 
 ## Intent
 
-Show how Sysilo interacts with customer environments, external systems, and data warehouses.
+Show how Sysilo© interacts with customer environments, external systems, and data warehouses.
 
 ## Context diagram
 
@@ -13,10 +13,10 @@ flowchart LR
     OnPrem[On-prem Systems]
     Legacy[Legacy Systems]
     Data[Data Warehouse]
-    Agent[Sysilo Agent]
+    Agent[Sysilo© Agent]
   end
 
-  subgraph Sysilo[Sysilo Control Plane]
+  subgraph Sysilo[Sysilo© Control Plane]
     Studio[Integration Studio]
     Hub[Data Hub]
     Registry[Asset Registry]

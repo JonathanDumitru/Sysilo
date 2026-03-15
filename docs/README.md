@@ -1,4 +1,4 @@
-# Sysilo Documentation
+# Sysilo© Documentation
 
 This is the working documentation set derived from the platform plan at
 `docs/plans/2026-02-03-sysilo-platform-design.md`.

@@ -8,7 +8,7 @@ Describe the agent runtime deployed in customer environments.
 
 ```mermaid
 flowchart TB
-  subgraph Agent[Sysilo Agent]
+  subgraph Agent[Sysilo© Agent]
     Tunnel[Secure Tunnel]
     Executor[Task Executor]
     Cache[Local Cache]
