@@ -1,8 +1,8 @@
-# Sysilo
+# Sysilo©
 
 Enterprise Integration and Data Unification Platform
 
-Sysilo is an enterprise integration and data unification platform designed for complex hybrid environments. It combines a SaaS control plane with lightweight customer-deployed agents to connect systems that cannot be reached directly. The platform focuses on integration orchestration, data unification, application rationalization, and landscape visibility. Sysilo allows enterprise teams to manage integrations across SaaS, on-premises, and legacy systems without requiring direct network access to customer environments.
+Sysilo© is an enterprise integration and data unification platform designed for complex hybrid environments. It combines a SaaS control plane with lightweight customer-deployed agents to connect systems that cannot be reached directly. The platform focuses on integration orchestration, data unification, application rationalization, and landscape visibility. Sysilo© allows enterprise teams to manage integrations across SaaS, on-premises, and legacy systems without requiring direct network access to customer environments.
 
 ## Core Outcomes
 
