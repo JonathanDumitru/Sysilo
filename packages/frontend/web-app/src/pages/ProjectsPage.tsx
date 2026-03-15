@@ -133,11 +133,11 @@ export function ProjectsPage() {
   };
 
   const getProgressColor = (progress: number, status: string) => {
-    if (status === 'completed') return 'bg-green-900/300';
-    if (progress >= 75) return 'bg-green-900/300';
-    if (progress >= 50) return 'bg-blue-900/300';
-    if (progress >= 25) return 'bg-yellow-900/300';
-    return 'bg-gray-300';
+    if (status === 'completed') return 'bg-green-500';
+    if (progress >= 75) return 'bg-green-500';
+    if (progress >= 50) return 'bg-blue-500';
+    if (progress >= 25) return 'bg-yellow-500';
+    return 'bg-gray-600';
   };
 
   const filteredProjects = projects.filter((project) => {
@@ -183,7 +183,7 @@ export function ProjectsPage() {
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 statusFilter === status
                   ? config.color + ' border-current'
-                  : 'bg-surface-raised/80 border-surface-border hover:border-surface-border'
+                  : 'bg-surface-raised/80 border-surface-border hover:border-gray-600'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -205,10 +205,10 @@ export function ProjectsPage() {
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 glass-input text-sm"
+            className="w-full pl-10 pr-4 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
           />
         </div>
-        <select className="px-3 py-2 glass-input text-sm">
+        <select className="px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none">
           <option value="all">All Owners</option>
           <option value="john">John Doe</option>
           <option value="sarah">Sarah Williams</option>
@@ -225,10 +225,10 @@ export function ProjectsPage() {
               <div
                 key={project.id}
                 onClick={() => setSelectedProject(project)}
-                className={`glass-panel p-5 cursor-pointer transition-all ${
+                className={`bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border p-5 cursor-pointer transition-all ${
                   selectedProject?.id === project.id
-                    ? 'border-primary-500 ring-2 ring-primary-100'
-                    : 'border-surface-border hover:border-surface-border'
+                    ? 'border-primary-500 ring-2 ring-primary-900/50'
+                    : 'border-surface-border hover:border-gray-600'
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
@@ -284,7 +284,7 @@ export function ProjectsPage() {
         </div>
 
         {/* Detail Panel */}
-        <div className="glass-panel h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="bg-surface-raised/80 backdrop-blur-glass rounded-xl shadow-glass border border-surface-border h-fit sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {selectedProject ? (
             <div>
               <div className="p-6 border-b border-surface-border sticky top-0 bg-surface-raised/80 z-10">
@@ -348,7 +348,7 @@ export function ProjectsPage() {
                             ? 'bg-green-900/40 text-green-400'
                             : phase.status === 'in_progress'
                             ? 'bg-blue-900/40 text-blue-400'
-                            : 'bg-surface-overlay text-gray-500'
+                            : 'bg-gray-700/50 text-gray-500'
                         }`}
                       >
                         {phase.status === 'completed' ? (
@@ -366,9 +366,9 @@ export function ProjectsPage() {
                           <div
                             className={`h-full rounded-full ${
                               phase.status === 'completed'
-                                ? 'bg-green-900/300'
+                                ? 'bg-green-500'
                                 : phase.status === 'in_progress'
-                                ? 'bg-blue-900/300'
+                                ? 'bg-blue-500'
                                 : 'bg-gray-700'
                             }`}
                             style={{ width: `${phase.progress}%` }}
@@ -409,14 +409,14 @@ export function ProjectsPage() {
                       key={index}
                       className="flex items-center gap-2 px-3 py-1.5 bg-surface-overlay/50 rounded-full"
                     >
-                      <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-xs font-medium text-primary-700">
+                      <div className="w-6 h-6 rounded-full bg-primary-900/40 flex items-center justify-center">
+                        <span className="text-xs font-medium text-primary-400">
                           {member.split(' ').map((n) => n[0]).join('')}
                         </span>
                       </div>
                       <span className="text-sm text-gray-300">{member}</span>
                       {member === selectedProject.owner && (
-                        <span className="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded">
+                        <span className="text-xs bg-primary-900/40 text-primary-400 px-1.5 py-0.5 rounded">
                           Owner
                         </span>
                       )}
@@ -503,7 +503,7 @@ export function ProjectsPage() {
                 </label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 glass-input text-sm"
+                  className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   placeholder="e.g., Analytics Platform Migration"
                 />
               </div>
@@ -511,7 +511,7 @@ export function ProjectsPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Application
                 </label>
-                <select className="w-full px-3 py-2 glass-input text-sm">
+                <select className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none">
                   <option value="">Select an application</option>
                   <option value="1">Core ERP System</option>
                   <option value="2">Analytics Platform</option>
@@ -522,7 +522,7 @@ export function ProjectsPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Playbook
                 </label>
-                <select className="w-full px-3 py-2 glass-input text-sm">
+                <select className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none">
                   <option value="">Select a playbook</option>
                   <option value="1">Cloud Rehosting Playbook</option>
                   <option value="2">Application Retirement Playbook</option>
@@ -536,7 +536,7 @@ export function ProjectsPage() {
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 glass-input text-sm"
+                    className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   />
                 </div>
                 <div>
@@ -545,7 +545,7 @@ export function ProjectsPage() {
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 glass-input text-sm"
+                    className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   />
                 </div>
               </div>
@@ -554,7 +554,7 @@ export function ProjectsPage() {
                   Description
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 glass-input text-sm"
+                  className="w-full px-3 py-2 bg-surface-base/50 border border-surface-border rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 outline-none"
                   rows={3}
                   placeholder="Describe the project goals and scope"
                 />
